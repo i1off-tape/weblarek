@@ -10,7 +10,7 @@ export class CardPreview extends Card {
     const card = this.createTemplate();
 
     this.setImageSrc(".card__image", data.image, card);
-    this.setText(".card__category", data.category, card);
+    this.setCategory(".card__category", data.category, card);
     this.setText(".card__title", data.title, card);
     this.setText(".card__text", data.description, card);
     this.setPrice(".card__price", data.price, card);

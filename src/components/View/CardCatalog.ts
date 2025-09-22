@@ -18,7 +18,7 @@ export class CardCatalog extends Card {
     card.setAttribute("data-id", data.id);
 
     this.setText(".card__title", data.title, card);
-    this.setText(".card__category", data.category, card);
+    this.setCategory(".card__category", data.category, card);
     this.setImageSrc(".card__image", data.image, card);
     this.setPrice(".card__price", data.price, card);
 

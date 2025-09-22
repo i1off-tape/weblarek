@@ -47,5 +47,33 @@ export abstract class Card extends Component<IProduct> {
     this.setText(selector, priceText, parent);
   }
 
+  protected setCategory(
+    selector: string,
+    category: string,
+    parent: HTMLElement
+  ): void {
+    const element = parent.querySelector(selector) as HTMLElement;
+    if (element) {
+      element.textContent = category;
+
+      // Добавляем CSS класс в зависимости от категории
+      const categoryClass = this.getCategoryClass(category);
+      element.className = `card__category ${categoryClass}`;
+    }
+  }
+
+  private getCategoryClass(category: string): string {
+    // Маппинг категорий на CSS классы
+    const categoryMap: { [key: string]: string } = {
+      "софт-скил": "card__category_soft",
+      другое: "card__category_other",
+      дополнительное: "card__category_additional",
+      кнопка: "card__category_button",
+      "хард-скил": "card__category_hard",
+    };
+
+    return categoryMap[category] || "card__category_default";
+  }
+
   abstract render(data: IProduct): HTMLElement;
 }
