@@ -1,14 +1,17 @@
 import { IBuyer, TPayment } from "../../types/index.ts";
+import { EventEmitter } from "../base/Events.ts";
 
 //Тест
 
-export class BuyerManagerTest {
+export class BuyerManager {
   protected buyer: IBuyer = {
     payment: "card", // значение по-умолчанию!
     email: "",
     phone: "",
     address: "",
   };
+
+  constructor(protected events: EventEmitter) {}
 
   private validateData(data: IBuyer): boolean {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -31,6 +34,7 @@ export class BuyerManagerTest {
       throw new Error("Данные покупателя некорректны");
     }
     this.buyer = { ...this.buyer, ...buyerData };
+    this.events.emit("buyer:changed", this.buyer);
   }
 
   getBuyerData(): IBuyer {
@@ -44,5 +48,6 @@ export class BuyerManagerTest {
       phone: "",
       address: "",
     };
+    this.events.emit("buyer:cleared");
   }
 }

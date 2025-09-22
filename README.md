@@ -287,3 +287,47 @@ export interface IOrderResponse {
   orderId?: string;
 }
 ```
+
+## Слой отображения UI
+
+Header
+
+```ts
+class Header {
+  protected orderButton: HTMLButtonElement;
+  protected orderCounts: HTMLElement;
+}
+```
+
+и интерфейс
+
+```ts
+interface HeaderData {
+  counter: number;
+}
+```
+
+```ts
+class Gallery {
+  protected gallery: HTMLElement;
+
+  set catalog(items: HTMLElement[]);
+}
+```
+
+и интерфейс
+
+```ts
+interface GalleryData {
+  catalog: HTMLElement[];
+}
+```
+
+```ts
+class Modal {
+  protected modalContent: HTMLElement;
+  protected modalButton: HTMLButtonElement;
+
+  set content(items: HTMLElement);
+}
+```

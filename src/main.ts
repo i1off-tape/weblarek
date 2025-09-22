@@ -1,124 +1,189 @@
 import "./scss/styles.scss";
-import { CatalogManagerTest } from "./components/Models/CatalogManager";
-import { CartManagerTest } from "./components/Models/CartManager";
-import { BuyerManagerTest } from "./components/Models/BuyerManager";
+import { CatalogManager } from "./components/Models/CatalogManager";
+import { CartManager } from "./components/Models/CartManager";
+import { BuyerManager } from "./components/Models/BuyerManager";
 import { Api } from "./components/base/Api.ts";
 import { ApiClient } from "./components/Models/ApiClient.ts";
-import { API_URL } from "./utils/constants";
+import { API_URL, CDN_URL } from "./utils/constants";
 import { apiProducts } from "./utils/data.ts";
+import { Header } from "./components/View/Header.ts";
+import { Gallery } from "./components/View/Gallery.ts";
+import { CardCatalog } from "./components/View/CardCatalog.ts";
+import { EventEmitter } from "./components/base/Events.ts";
+import { ensureElement } from "./utils/utils";
+import { Basket } from "./components/View/Basket.ts";
+import { Modal } from "./components/View/Modal.ts";
+import { OrderForm } from "./components/View/OrderForm.ts";
+import { ContactsForm } from "./components/View/ContactsForm.ts";
+import { Success } from "./components/View/Success.ts";
+import { CardBasket } from "./components/View/CardBasket.ts";
+import { CardPreview } from "./components/View/CardPreview.ts";
+import { Form } from "./components/View/Form.ts";
+import { IProduct, IBuyer, IOrderResponse, TPayment } from "./types/index.ts";
 
-//Тесты
+// ОБЯЗАТЕЛЬНО: обернуть в DOMContentLoaded
+document.addEventListener("DOMContentLoaded", () => {
+  // Инициализация компонентов и моделей
+  const events = new EventEmitter();
+  const api = new Api(API_URL);
+  const apiClient = new ApiClient(api, events);
 
-const productsModel = new CatalogManagerTest();
-productsModel.saveProductList(apiProducts.items);
-const selectedProductTest = productsModel.getProductList()[1];
-productsModel.saveSelectedProduct(selectedProductTest);
+  const cartManager = new CartManager(events);
+  const buyerManager = new BuyerManager(events);
+  const catalogManager = new CatalogManager(events);
 
-const cartPerson = new CartManagerTest();
-cartPerson.addProduct(apiProducts.items[0]);
-cartPerson.addProduct(apiProducts.items[1]);
+  // Компоненты, которые используют существующие DOM-элементы
+  const modal = new Modal(ensureElement<HTMLElement>("#modal-container"));
+  const gallery = new Gallery(ensureElement<HTMLElement>(".gallery"), events);
+  const header = new Header(events, ensureElement<HTMLElement>(".header"));
 
-const personBuyer = new BuyerManagerTest();
+  // Компоненты, создающиеся из шаблонов
+  const basket = new Basket(events);
+  const success = new Success(events);
+  const orderForm = new OrderForm(events);
+  const contactsForm = new ContactsForm(events);
 
-//api
-const api = new Api(API_URL);
-const apiClient = new ApiClient(api);
-async function loadProducts() {
-  try {
-    const response = await apiClient.getProducts();
-    console.log("Продукты, полученные с API:", response);
-    productsModel.saveProductList(response.items);
-    console.log(
-      "Сохранённые продукты в productsModel из API:",
-      productsModel.getProductList()
+  // Загрузка товаров при запуске
+  apiClient
+    .getProducts()
+    .then((data) => {
+      console.log("✅ Products loaded from API:", data.items.length); // ДОБАВИТЬ
+      catalogManager.saveProductList(data.items);
+    })
+    .catch((error) => {
+      console.error("❌ API Error:", error); // ДОБАВИТЬ
+    });
+
+  // ОБРАБОТЧИКИ СОБЫТИЙ
+
+  // Каталог товаров - ПОЛНЫЙ обработчик
+  events.on("catalog:changed", (items: IProduct[]) => {
+    console.log("📋 Catalog changed, rendering", items.length, "items");
+
+    const cardCatalog = new CardCatalog(document.createElement("div"));
+    const cards = items.map((item) => {
+      const card = cardCatalog.render(item);
+      console.log("🃏 Created card for:", item.title);
+
+      // КРИТИЧНО: добавляем обработчик клика на КАРТОЧКУ
+      card.addEventListener("click", () => {
+        console.log("🖱️ Card clicked for ID:", item.id);
+        events.emit("card:select", { id: item.id });
+      });
+
+      return card;
+    });
+
+    gallery.catalog = cards;
+    console.log("🎨 Gallery catalog updated, children:", gallery.itemsCount);
+  });
+
+  // Просмотр товара
+  events.on("catalog:productSelected", (product: IProduct) => {
+    console.log("🎬 Opening modal for product:", product.title);
+    const cardPreview = new CardPreview(document.createElement("div"));
+    const preview = cardPreview.render(product);
+
+    // Добавляем кнопку "В корзину"
+    const addButton = preview.querySelector(".card__button");
+    if (addButton) {
+      addButton.addEventListener("click", () => {
+        events.emit("card:addToBasket", { id: product.id });
+        modal.close();
+      });
+    }
+
+    modal.setContent(preview);
+    modal.open();
+  });
+
+  // Корзина
+  events.on("cart:changed", (items: IProduct[]) => {
+    header.counter = items.length;
+    basket.items = items;
+    basket.total = cartManager.getTotalPrice();
+  });
+
+  events.on("basket:open", () => {
+    basket.items = cartManager.getProductsList();
+    basket.total = cartManager.getTotalPrice();
+    const basketElement = basket.render();
+    modal.setContent(basketElement);
+    modal.open();
+  });
+
+  events.on("basket:remove", (data: { id: string }) => {
+    cartManager.removeProduct(data.id);
+  });
+
+  events.on("basket:checkout", () => {
+    modal.setContent(
+      orderForm.render({
+        valid: false,
+        errors: ["Заполните форму"],
+      })
     );
-  } catch (error) {
-    console.error("Ошибка при получении продуктов с API:", error);
-  }
-}
-
-//Каталог
-console.log("ПРОВЕРКА РАБОТЫ МЕТОДОВ КЛАССА CatalogManagerTest");
-console.log("Весь массив из каталога data.ts:", productsModel.getProductList());
-console.log("Поиск существующего товара:");
-console.log("ID: b06cde61-912f-4663-9751-09956c0eed67");
-console.log(
-  "Результат:",
-  productsModel.getProductById("b06cde61-912f-4663-9751-09956c0eed67")
-);
-console.log("---");
-console.log("Поиск НЕсуществующего товара:");
-console.log("ID: 123");
-console.log("Результат:", productsModel.getProductById("123"));
-console.log("СОХРАНЯЕМ И ПОЛУЧАЕМ ТОВАР");
-console.log("Результат сохранения товара:", productsModel.getSelectedProduct());
-console.log("----");
-
-// Корзина
-console.log("ПРОВЕРКА РАБОТЫ МЕТОДОВ КЛАССА CartManagerTest");
-console.log("Добавляем 2 товара в корзину");
-console.log("Текущий список товаров в корзине:", cartPerson.getProductsList());
-console.log(
-  "Общее количество товаров в корзине:",
-  cartPerson.getProductsCount()
-);
-console.log("Общая стоимость товаров в корзине:", cartPerson.getTotalPrice());
-console.log("Проверяем наличие товара в корзине по ID:");
-console.log(
-  "ID: c101ab44-ed99-4a54-990d-47aa2bb4e7d9",
-  cartPerson.hasProduct("c101ab44-ed99-4a54-990d-47aa2bb4e7d9")
-);
-console.log("ID: 123", cartPerson.hasProduct("123"));
-console.log("Удаляем товар из корзины по ID:");
-console.log(
-  "ID: 854cef69-976d-4c2a-a18c-2aa45046c390",
-  cartPerson.removeProduct("854cef69-976d-4c2a-a18c-2aa45046c390")
-);
-console.log("Текущий список товаров в корзине:", cartPerson.getProductsList());
-console.log("Очистка корзины");
-cartPerson.clearCart();
-console.log("Текущий список товаров в корзине:", cartPerson.getProductsList());
-console.log("----");
-
-// Покупатель
-
-console.log("ПРОВЕРКА РАБОТЫ МЕТОДОВ КЛАССА BuyerManagerTest");
-console.log(
-  "Получаем данные покупателя по-умолчанию:",
-  personBuyer.getBuyerData()
-);
-console.log(
-  "Проверка валидации данных по-умолчанию:",
-  personBuyer.validationData()
-);
-console.log("Сохраняем НЕкорректные данные покупателя:");
-try {
-  personBuyer.saveBuyerData({
-    payment: "cash",
-    email: "yandexRulit", // некорректный email
-    phone: "79991234567", // некорректный телефон
-    address: "ул. Ленина, д. 1", // некорректный адрес
   });
-} catch (error) {
-  console.error(
-    "Ошибка при сохранении данных покупателя:",
-    (error as Error).message
-  );
-  console.log("Сохраняем корректные данные покупателя:");
-  personBuyer.saveBuyerData({
-    payment: "cash",
-    email: "yandexRulit@yandex.ru",
-    phone: "+79991234567",
-    address: "г. Москва, ул. Ленина, д. 1",
-  });
-  console.log(
-    "Получаем сохранённые данные покупателя:",
-    personBuyer.getBuyerData()
-  );
-  console.log(
-    "Проверка валидации сохранённых данных:",
-    personBuyer.validationData()
-  );
-}
 
-loadProducts();
+  // Формы
+  events.on(
+    "orderForm:submit",
+    (data: { payment: TPayment; address: string }) => {
+      buyerManager.saveBuyerData({
+        ...buyerManager.getBuyerData(),
+        payment: data.payment,
+        address: data.address,
+      });
+
+      modal.setContent(
+        contactsForm.render({
+          valid: false,
+          errors: ["Заполните контактные данные"],
+        })
+      );
+    }
+  );
+
+  events.on("contactsForm:submit", (data: { email: string; phone: string }) => {
+    const buyerData = {
+      ...buyerManager.getBuyerData(),
+      email: data.email,
+      phone: data.phone,
+    };
+
+    buyerManager.saveBuyerData(buyerData);
+
+    if (buyerManager.validationData()) {
+      apiClient.sendOrder(cartManager.getProductsList(), buyerData);
+    }
+  });
+
+  // Модальные окна
+  events.on("success:close", () => {
+    modal.close();
+  });
+
+  // Карточки товаров
+  events.on("card:select", (data: { id: string }) => {
+    console.log("🔥 card:select triggered with ID:", data.id); // ДОБАВИТЬ
+    const product = catalogManager.getProductById(data.id);
+    console.log("📦 Found product:", product); // ДОБАВИТЬ
+    if (product) {
+      events.emit("catalog:productSelected", product);
+      console.log("🎯 Emitted catalog:productSelected"); // ДОБАВИТЬ
+    } else {
+      console.error(`Product with ID ${data.id} not found`);
+    }
+  });
+
+  events.on("card:addToBasket", (data: { id: string }) => {
+    const product = catalogManager.getProductById(data.id);
+    if (product) {
+      cartManager.addProduct(product);
+    }
+  });
+
+  // После создания events
+  events.on("test", () => console.log("TEST EVENT WORKS!"));
+  events.emit("test"); // Должен вывести сообщение
+}); // Конец DOMContentLoaded

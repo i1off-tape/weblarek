@@ -1,17 +1,31 @@
 import { IProduct } from "../../types/index.ts";
+import { EventEmitter } from "../base/Events.ts";
 
 // Тест
-export class CartManagerTest {
+export class CartManager {
   protected items: IProduct[] = [];
+
+  constructor(protected events: EventEmitter) {}
 
   addProduct(product: IProduct): void {
     this.items.push({ ...product });
+    this.events.emit("cart:changed", this.items);
+    this.events.emit("cart:productAdded", product);
   }
 
   removeProduct(productId: string): boolean {
     const initialLength = this.items.length;
+    const removedProduct = this.items.find(
+      (item: IProduct) => item.id === productId
+    );
     this.items = this.items.filter((item: IProduct) => item.id !== productId);
-    return this.items.length < initialLength;
+
+    if (this.items.length < initialLength) {
+      this.events.emit("cart:changed", this.items);
+      this.events.emit("cart:productRemoved", removedProduct);
+      return true;
+    }
+    return false;
   }
 
   getProductsCount(): number {
@@ -34,6 +48,9 @@ export class CartManagerTest {
   }
 
   clearCart(): void {
+    const clearedItems = [...this.items];
     this.items = [];
+    this.events.emit("cart:cleared", clearedItems);
+    this.events.emit("cart:changed", this.items);
   }
 }

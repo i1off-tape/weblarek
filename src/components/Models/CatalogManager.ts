@@ -1,30 +1,11 @@
 import { IProduct } from "../../types/index.ts";
+import { EventEmitter } from "../base/Events.ts";
 
-/* Будущий используемый класс CatalogManager
-class CatalogManager {
-  protected products: IProduct[];
-  protected selectedProduct: IProduct | null;
-
-  constructor(initialProducts: IProduct[] = []) {
-    this.products = initialProducts;
-  }
-
-  getProductList(): IProduct[] {}
-
-  saveSelectedProduct(product: IProduct): void {}
-
-}
-*/
-
-//Тест
-
-export class CatalogManagerTest {
+export class CatalogManager {
   protected items: IProduct[] = [];
-  protected selectedProduct: IProduct | null;
+  protected selectedProduct: IProduct | null = null;
 
-  constructor() {
-    this.selectedProduct = null;
-  }
+  constructor(protected events: EventEmitter) {}
 
   getProductList(): IProduct[] {
     return this.items;
@@ -32,6 +13,7 @@ export class CatalogManagerTest {
 
   saveProductList(newItems: IProduct[]): void {
     this.items = newItems;
+    this.events.emit("catalog:changed", this.items);
   }
 
   getSelectedProduct(): IProduct | null {
@@ -40,6 +22,7 @@ export class CatalogManagerTest {
 
   saveSelectedProduct(product: IProduct): void {
     this.selectedProduct = product;
+    this.events.emit("catalog:selectedProductChanged", product);
   }
 
   getProductById(id: string): IProduct | undefined {
