@@ -39,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Компоненты, создающиеся из шаблонов
   const basket = new Basket(events);
+  const basketElement = basket.render();
   const success = new Success(events);
   const orderForm = new OrderForm(events);
   const contactsForm = new ContactsForm(events);
@@ -117,7 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
   events.on("basket:open", () => {
     basket.items = cartManager.getProductsList();
     basket.total = cartManager.getTotalPrice();
-    const basketElement = basket.render();
+
     modal.setContent(basketElement);
     modal.open();
   });

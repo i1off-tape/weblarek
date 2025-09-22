@@ -20,7 +20,11 @@ export class Basket extends Component<IBasketView> {
     const template = document.querySelector("#basket") as HTMLTemplateElement;
     if (!template) throw new Error("Basket template not found");
 
-    const container = template.content.cloneNode(true) as HTMLElement;
+    const basketNode = template.content.querySelector(".basket");
+    if (!basketNode) {
+      throw new Error("Required element .basket not found in #basket template");
+    }
+    const container = basketNode.cloneNode(true) as HTMLElement;
     super(container);
 
     this.events = events;
