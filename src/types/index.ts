@@ -10,11 +10,7 @@ export interface IProduct {
 }
 
 export type TPayment = "card" | "cash"; // типы оплат
-
-export type TOrderData = {
-  items: IProduct[];
-  buyer: IBuyer;
-};
+export type PartialBuyer = Partial<IBuyer>;
 
 export interface IBuyer {
   payment: TPayment; // методы оплаты

@@ -13,6 +13,36 @@ export class BuyerManager {
 
   constructor(protected events: EventEmitter) {}
 
+  // НОВЫЙ МЕТОД: частичная валидация только обязательных полей
+  private validatePartialData(data: Partial<IBuyer>): boolean {
+    // Проверяем только те поля, которые присутствуют в данных
+    if (
+      data.payment !== undefined &&
+      data.payment !== "card" &&
+      data.payment !== "cash"
+    ) {
+      return false;
+    }
+    if (data.address !== undefined && data.address.trim().length <= 5) {
+      return false;
+    }
+    if (
+      data.email !== undefined &&
+      data.email !== "" &&
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(data.email)
+    ) {
+      return false;
+    }
+    if (
+      data.phone !== undefined &&
+      data.phone !== "" &&
+      !/^\+?[0-9]{10,15}$/.test(data.phone)
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   private validateData(data: IBuyer): boolean {
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     const phoneRegex = /^\+?[0-9]{10,15}$/;
@@ -29,10 +59,13 @@ export class BuyerManager {
     return this.validateData(this.buyer);
   }
 
-  saveBuyerData(buyerData: IBuyer): void {
-    if (!this.validateData(buyerData)) {
+  saveBuyerData(buyerData: Partial<IBuyer>): void {
+    // Используем частичную валидацию для промежуточных данных
+    if (!this.validatePartialData(buyerData)) {
       throw new Error("Данные покупателя некорректны");
     }
+
+    // Обновляем только переданные поля
     this.buyer = { ...this.buyer, ...buyerData };
     this.events.emit("buyer:changed", this.buyer);
   }

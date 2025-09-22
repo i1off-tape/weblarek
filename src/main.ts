@@ -128,35 +128,47 @@ document.addEventListener("DOMContentLoaded", () => {
     catalogManager.saveProductList(catalogManager.getProductList());
   });
 
+  // Обновляем обработчики
   events.on("basket:checkout", () => {
-    modal.setContent(
-      orderForm.render({
-        valid: false,
-        errors: ["Заполните форму"],
-      })
-    );
+    // Используем render для сброса и обновления формы
+    const orderFormElement = orderForm.render({
+      valid: false,
+      errors: ["Заполните форму"],
+    });
+    modal.setContent(orderFormElement);
   });
 
   // Формы
-  events.on(
-    "orderForm:submit",
-    (data: { payment: TPayment; address: string }) => {
+  events.on("order:submit", (data: { payment: TPayment; address: string }) => {
+    console.log("🔍 Saving order data:", data);
+
+    try {
+      // Сохраняем только адрес и способ оплаты
       buyerManager.saveBuyerData({
-        ...buyerManager.getBuyerData(),
         payment: data.payment,
         address: data.address,
+        // email и phone остаются пустыми - это нормально на этом этапе
       });
-
-      modal.setContent(
-        contactsForm.render({
-          valid: false,
-          errors: ["Заполните контактные данные"],
-        })
-      );
+      console.log("✅ Order data saved successfully");
+    } catch (error) {
+      console.error("❌ Error saving order data:", error);
+      // Показываем ошибку пользователю
+      const orderFormElement = orderForm.render({
+        valid: false,
+        errors: ["Проверьте введенные данные"],
+      });
+      modal.setContent(orderFormElement);
+      return;
     }
-  );
 
-  events.on("contactsForm:submit", (data: { email: string; phone: string }) => {
+    const contactsFormElement = contactsForm.render({
+      valid: false,
+      errors: ["Заполните контактные данные"],
+    });
+    modal.setContent(contactsFormElement);
+  });
+
+  events.on("contacts:submit", (data: { email: string; phone: string }) => {
     const buyerData = {
       ...buyerManager.getBuyerData(),
       email: data.email,
@@ -166,7 +178,50 @@ document.addEventListener("DOMContentLoaded", () => {
     buyerManager.saveBuyerData(buyerData);
 
     if (buyerManager.validationData()) {
-      apiClient.sendOrder(cartManager.getProductsList(), buyerData);
+      const products = cartManager.getProductsList();
+      const total = cartManager.getTotalPrice();
+
+      console.log("🚀 Sending order with:", {
+        products: products.map((p) => ({
+          id: p.id,
+          title: p.title,
+          price: p.price,
+        })),
+        buyer: buyerData,
+        total: total,
+      });
+
+      apiClient
+        .sendOrder(products, buyerData)
+        .then((response: IOrderResponse) => {
+          console.log("✅ Order response:", response);
+
+          // ПРАВИЛЬНАЯ ПРОВЕРКА: если есть id - заказ успешно создан
+          if (response.id) {
+            console.log("🎉 Order created successfully! ID:", response.id);
+
+            // Показываем окно успеха с общей суммой из ответа API
+            const successElement = success.render({
+              total: response.total || total,
+            });
+            modal.setContent(successElement);
+
+            // Очищаем корзину после успешного заказа
+            cartManager.clearCart();
+            buyerManager.clearBuyerData(); // Очищаем данные покупателя
+          } else {
+            console.error("❌ Order creation failed - no order ID in response");
+            // Можно показать сообщение об ошибке пользователю
+          }
+        })
+        .catch((error) => {
+          console.error("❌ Order error:", error.message);
+          // Показать ошибку пользователю
+          alert("Ошибка при оформлении заказа: " + error.message);
+        });
+    } else {
+      console.error("❌ Buyer data validation failed");
+      alert("Проверьте правильность введенных данных");
     }
   });
 

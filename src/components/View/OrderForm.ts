@@ -8,44 +8,76 @@ interface IOrderFormData {
 
 export class OrderForm extends Form<IOrderFormData> {
   constructor(events: EventEmitter) {
-    super("#order", events); // передаем ID шаблона
+    super("#order", events);
+    this.initPaymentButtons();
 
-    this.container.addEventListener("click", (e: Event) => {
-      const target = e.target as HTMLElement;
-      const button = target.closest(".button_alt") as HTMLElement;
+    // Добавляем отладку
+    events.on("order:submit", (data) => {
+      console.log("🔍 OrderForm heard order:submit:", data);
+    });
+  }
 
-      if (button) {
-        this.container.querySelectorAll(".button_alt").forEach((btn) => {
-          btn.classList.remove("button_alt-active");
-        });
+  private initPaymentButtons(): void {
+    const paymentButtons = this.container.querySelectorAll(".button_alt");
+
+    paymentButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        console.log("💳 Payment button clicked:", button.getAttribute("name"));
+
+        // Убираем активный класс у всех кнопок
+        paymentButtons.forEach((btn) =>
+          btn.classList.remove("button_alt-active")
+        );
+        // Добавляем активный класс к выбранной кнопке
         button.classList.add("button_alt-active");
         this.validateForm();
-      }
+      });
     });
   }
 
   protected validateForm(): void {
     const errors: string[] = [];
-    const address = this.container.querySelector(
+    const addressInput = this.container.querySelector(
       '[name="address"]'
     ) as HTMLInputElement;
-    const payment = this.container.querySelector(".button_alt.button_selected");
+    const paymentButton = this.container.querySelector(".button_alt-active");
 
-    if (!address.value) errors.push("Введите адрес");
-    if (!payment) errors.push("Выберите способ оплаты");
+    console.log("🔍 Validating order form:", {
+      address: addressInput?.value,
+      payment: paymentButton?.getAttribute("name"),
+      hasPayment: !!paymentButton,
+    });
+
+    if (!addressInput?.value.trim()) {
+      errors.push("Введите адрес доставки");
+    }
+
+    if (!paymentButton) {
+      errors.push("Выберите способ оплаты");
+    }
 
     this.setErrors(errors);
+    console.log("📋 Validation errors:", errors);
   }
 
   protected getFormData(): IOrderFormData {
-    return {
-      payment:
-        this.container
-          .querySelector(".button_alt.button_selected")
-          ?.getAttribute("name") || "",
-      address: (
-        this.container.querySelector('[name="address"]') as HTMLInputElement
-      ).value,
+    const activeButton = this.container.querySelector(".button_alt-active");
+    const addressInput = this.container.querySelector(
+      '[name="address"]'
+    ) as HTMLInputElement;
+
+    const data = {
+      payment: activeButton?.getAttribute("name") || "",
+      address: addressInput?.value || "",
     };
+
+    console.log("📦 Order form data:", data);
+    return data;
+  }
+
+  render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {
+    console.log("🔄 Rendering order form");
+    this.reset();
+    return super.render(data);
   }
 }

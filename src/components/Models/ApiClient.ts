@@ -3,7 +3,6 @@ import {
   IProduct,
   IBuyer,
   IProductResponse,
-  TOrderData,
   IOrderResponse,
 } from "../../types/index.ts";
 
@@ -31,7 +30,19 @@ export class ApiClient {
   async sendOrder(items: IProduct[], buyer: IBuyer): Promise<IOrderResponse> {
     try {
       this.events.emit("api:orderSending", { items, buyer });
-      const orderData: TOrderData = { items, buyer };
+
+      // ПРАВИЛЬНЫЙ ФОРМАТ ДЛЯ API
+      const orderData = {
+        payment: buyer.payment === "card" ? "online" : "upon_receipt", // преобразуем в формат API
+        email: buyer.email,
+        phone: buyer.phone,
+        address: buyer.address,
+        total: items.reduce((sum, item) => sum + (item.price || 0), 0),
+        items: items.map((item) => item.id), // только ID товаров
+      };
+
+      console.log("📤 Sending order to API:", orderData);
+
       const response = await this.api.post<IOrderResponse>(
         "/order/",
         orderData

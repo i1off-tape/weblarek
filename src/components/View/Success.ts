@@ -15,7 +15,13 @@ export class Success extends Component<ISuccess> {
     const template = document.querySelector("#success") as HTMLTemplateElement;
     if (!template) throw new Error("Success template not found");
 
-    const container = template.content.cloneNode(true) as HTMLElement;
+    const content = template.content.cloneNode(true) as DocumentFragment;
+    const container = content.firstElementChild as HTMLElement;
+
+    if (!container) {
+      throw new Error("Success template is empty");
+    }
+
     super(container);
 
     this.events = events;
