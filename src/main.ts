@@ -85,12 +85,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const preview = cardPreview.render(product);
 
     // Добавляем кнопку "В корзину"
-    const addButton = preview.querySelector(".card__button");
-    if (addButton) {
-      addButton.addEventListener("click", () => {
-        events.emit("card:addToBasket", { id: product.id });
-        modal.close();
-      });
+    const button = preview.querySelector(".card__button");
+    if (button) {
+      const isInCart = cartManager.hasProduct(product.id);
+      if (isInCart) {
+        button.textContent = "Удалить из корзины";
+        button.addEventListener("click", () => {
+          events.emit("basket:remove", { id: product.id }); // Используем существующий событие удаления
+          modal.close();
+        });
+      } else {
+        button.textContent = "В корзину";
+        button.addEventListener("click", () => {
+          events.emit("card:addToBasket", { id: product.id });
+          modal.close();
+        });
+      }
     }
 
     modal.setContent(preview);
@@ -114,6 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   events.on("basket:remove", (data: { id: string }) => {
     cartManager.removeProduct(data.id);
+    catalogManager.saveProductList(catalogManager.getProductList());
   });
 
   events.on("basket:checkout", () => {
@@ -180,6 +191,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const product = catalogManager.getProductById(data.id);
     if (product) {
       cartManager.addProduct(product);
+      catalogManager.saveProductList(catalogManager.getProductList());
     }
   });
 
