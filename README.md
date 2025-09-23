@@ -228,6 +228,8 @@ class BuyerManager {
 
   getBuyerData(): IBuyer; // получить данные покупателя
 
+  private validatePartialData(data: Partial<IBuyer>): boolean; // НОВЫЙ МЕТОД: частичная валидация только обязательных полей
+
   saveBuyerData(buyerData: Partial<IBuyer>): void; // сохранить введённые данные покупателя.
 
   private validateData(data: IBuyer): boolean; // внутренняя валидация данных
@@ -272,30 +274,29 @@ class ApiClient {
 Также написали интерфейсы для удобства.
 
 ```typescript
-export type TOrderData = {
-  products: IProduct[];
-  buyer: IBuyer;
-};
-
 export interface IProductResponse {
   products: IProduct[];
 }
 
 export interface IOrderResponse {
-  success: boolean;
-  code: boolean;
-  orderId?: string;
+  id?: string; // ID заказа если успешно
+  total?: number; // Общая сумма
+  error?: string; // Сообщение об ошибке если есть
 }
 ```
 
 ## Слой отображения UI
 
-Header
+1. Header - Компонент для отображения шапки сайта с счётчиком товаров в корзине и кнопкой открытия корзины.
 
 ```ts
 class Header {
-  protected orderButton: HTMLButtonElement;
-  protected orderCounts: HTMLElement;
+  protected orderButton: HTMLButtonElement; //кнопка корзины
+  protected orderCounts: HTMLElement; // счётчик товаров.
+
+  constructor(protected events: IEvents, container: HTMLElement);
+
+  set counter(value: number); // установить значение счётчик
 }
 ```
 
@@ -303,31 +304,272 @@ class Header {
 
 ```ts
 interface HeaderData {
-  counter: number;
+  counter: number; // Для счётчика
 }
 ```
 
+2. Gallery - Компонент для отображения галереи товаров в каталоге.
+
 ```ts
 class Gallery {
-  protected gallery: HTMLElement;
 
-  set catalog(items: HTMLElement[]);
+  protected events: EventEmitter; - эмиттер событий.
+  constructor(container: HTMLElement, events: EventEmitter)
+
+  get itemsCount(): number // получить количество карточек товаров в галерее.
+
+  set catalog(items: HTMLElement[]); установить карточки товаров.
 }
 ```
 
 и интерфейс
 
 ```ts
-interface GalleryData {
+interface IGalleryData {
   catalog: HTMLElement[];
 }
 ```
 
+3. Modal - Компонент для управления модальными окнами, включая открытие, закрытие и установку содержимого.
+
 ```ts
 class Modal {
-  protected modalContent: HTMLElement;
-  protected modalButton: HTMLButtonElement;
+  protected _closeButton: HTMLButtonElement; // кнопка закрытия.
+  protected _content: HTMLElement; //контейнер содержимого.
 
-  set content(items: HTMLElement);
+  constructor(container: HTMLElement);
+
+  private disableBodyScroll(): void; // отключение скролла
+
+  private enableBodyScroll(): void; // // включение скролла
+
+  open(): void; // открыть модальное окно
+
+  close(): void; // закрыть модальное окно
+
+  setContent(content: HTMLElement): void; // установить содержимое
 }
 ```
+
+4. Card - Абстрактный базовый класс для карточек товаров (каталог, корзина, предпросмотр).
+
+```ts
+class Card {
+  protected templateId: string; // - ID шаблона
+
+  constructor(container: HTMLElement, templateId: string);
+
+  protected createTemplate(); // создать элемент из шаблона.
+
+  protected setText(selector: string, text: string, parent: HTMLElement): void; // установить текст
+
+  protected setImageSrc( // установить изображение
+    selector: string,
+    src: string,
+    parent: HTMLElement
+  ): void;
+
+  protected setPrice( // установить цену
+    selector: string,
+    price: number | null,
+    parent: HTMLElement
+  ): void;
+
+  protected setCategory( // установить категорию
+    selector: string,
+    category: string,
+    parent: HTMLElement
+  ): void;
+
+  private getCategoryClass(category: string): string; // получить фоновый цвет категории.
+
+  abstract render(data: IProduct): HTMLElement; // абстрактный метод рендеринга.
+}
+```
+
+4.1 CardCatalog - Наследник `Card` для карточек в каталоге.
+
+```ts
+class CardCatalog {
+  constructor(container: HTMLElement); // - вызывает супер с шаблоном "#card-catalog".
+
+  render(data: IProduct): HTMLElement; // - рендерит карточку с названием, категорией, изображением и ценой.
+}
+```
+
+4.2 CardBasket - Наследник `Card` для карточек в корзине.
+
+```ts
+class CardBasket {
+  constructor(container: HTMLElement);
+
+  render(data: IProduct): HTMLElement; // рендерит карточку с названием и ценой
+}
+```
+
+4.3 CardPreview - Наследник `Card` для отображения детальной информации о товаре в модальном окне.
+
+```ts
+class CardPreview {
+  constructor(container: HTMLElement);
+
+  render(data: IProduct): HTMLElement {}
+  // рендерит карточку с описанием, изображением, названием, категорией, ценой и кнопкой «Купить» (или «Недоступно» для товаров с `price === null`).
+}
+```
+
+5. Form - Абстрактный базовый класс для форм (заказ, контакты).
+
+```ts
+class Form {
+  protected events: EventEmitter; // - эмиттер.
+  protected _submit: HTMLButtonElement; // - кнопка submit.
+  protected _errors: HTMLElement; // - блок ошибок
+
+  constructor(templateId: string, events: EventEmitter); // - принимает ID шаблона и эмиттер.
+
+  protected abstract validateForm(): void; // - абстрактная валидация.
+  protected abstract getFormData(): T; // - абстрактное получение данных.
+  protected setErrors(errors: string[]): void; // - установить ошибки и отключить кнопку.
+  reset(): void; // - сброс формы.
+}
+```
+
+и интерфейс
+
+```ts
+interface IFormState {
+  valid: boolean;
+  errors: string[];
+}
+```
+
+5.1 OrderForm - Наследник `Form` для формы оформления заказа (первый шаг: оплата и адрес).
+
+```ts
+class OrderForm {
+  constructor(events: EventEmitter) {}
+
+  private initPaymentButtons(): void; // - инициализирует обработчики для кнопок выбора способа оплаты.
+
+  protected validateForm(): void; // - валидирует адрес и способ оплаты, отображая ошибки.
+
+  protected getFormData(): IOrderFormData; // - возвращает данные формы (способ оплаты и адрес).
+
+  render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement; // - рендерит форму с сбросом данных.
+}
+```
+
+И интерфейс:
+
+```ts
+interface IOrderFormData {
+  payment: string;
+  address: string;
+}
+```
+
+5.2 ContactsForm - Наследник `Form` для формы контактов (второй шаг: email и телефон).
+
+```ts
+class ContactsForm {
+  constructor(events: EventEmitter) {}
+
+  protected validateForm(): void; // - валидирует email и телефон, отображая ошибки.
+
+  private isValidEmail(email: string): boolean; // - проверяет корректность email.
+
+  private isValidPhone(phone: string): boolean; // - проверяет корректность телефона.
+
+  protected getFormData(): IContactsFormData; // - возвращает данные формы (email и телефон).
+
+  render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement; // - рендерит форму с сбросом данных.
+}
+```
+
+и интерфейс:
+
+```ts
+interface IContactsFormData {
+  email: string;
+  phone: string;
+}
+```
+
+6. Basket - Компонент для отображения корзины с товарами, итоговой суммой и кнопкой оформления заказа.
+
+```ts
+class Basket {
+  protected _list: HTMLElement; // - контейнер для списка товаров.
+  protected _total: HTMLElement; // - элемент для отображения итоговой суммы.
+  protected _button: HTMLButtonElement; // - кнопка оформления заказа.
+  protected events: EventEmitter; // - эмиттер событий.
+
+  constructor(events: EventEmitter) {}
+
+  set items(items: IProduct[]): void; // - устанавливает список товаров в корзине, отображая надпись «Корзина пуста» при отсутствии товаров.
+  set total(total: number): void; //  - устанавливает итоговую сумму в формате «X синапсов».
+  render(data?: Partial<IBasketView>): HTMLElement; // - рендерит корзину с обновлением списка товаров и суммы.
+}
+```
+
+и интерфейс
+
+```ts
+interface IBasketView {
+  items: IProduct[];
+  total: number;
+}
+```
+
+7. Success - Компонент для отображения сообщения об успешном оформлении заказа с указанием списанной суммы.
+
+```ts
+class Success {
+  protected _close: HTMLElement; // - кнопка закрытия.
+  protected _total: HTMLElement; // - элемент для отображения списанной суммы.
+  protected events: EventEmitter; // - эмиттер событий.
+
+  constructor(events: EventEmitter) {}
+
+  set total(total: number): void; // - устанавливает текст в формате «Списано X синапсов».
+  render(data?: Partial<ISuccess>): HTMLElement; // - рендерит компонент с обновлением суммы (унаследовано от `Component`).
+}
+```
+
+И интерфейс:
+
+```ts
+interface ISuccess {
+  total: number;
+}
+```
+
+## События приложения
+
+В приложении используется событийно-ориентированный подход для взаимодействия между слоями MVP. События генерируются через `EventEmitter` и обрабатываются в `main.ts` или соответствующих компонентах. Ниже перечислены все события, их назначение и передаваемые данные:
+
+- `catalog:changed`: Генерируется при обновлении списка товаров в `CatalogManager`. Передаёт массив товаров (`IProduct[]`).
+- `catalog:selectedProductChanged`: Генерируется при выборе товара в `CatalogManager`. Передаёт выбранный товар (`IProduct`).
+- `cart:changed`: Генерируется при изменении корзины (добавление, удаление, очистка) в `CartManager`. Передаёт массив товаров в корзине (`IProduct[]`).
+- `cart:productAdded`: Генерируется при добавлении товара в корзину в `CartManager`. Передаёт добавленный товар (`IProduct`).
+- `cart:productRemoved`: Генерируется при удалении товара из корзины в `CartManager`. Передаёт удалённый товар (`IProduct`).
+- `cart:cleared`: Генерируется при очистке корзины в `CartManager`. Передаёт массив очищенных товаров (`IProduct[]`).
+- `buyer:changed`: Генерируется при обновлении данных покупателя в `BuyerManager`. Передаёт данные покупателя (`IBuyer`).
+- `buyer:cleared`: Генерируется при очистке данных покупателя в `BuyerManager`. Не передаёт данные.
+- `api:productsLoading`: Генерируется перед загрузкой товаров с сервера в `ApiClient`. Не передаёт данные.
+- `api:productsLoaded`: Генерируется после успешной загрузки товаров в `ApiClient`. Передаёт ответ сервера (`IProductResponse`).
+- `api:productsError`: Генерируется при ошибке загрузки товаров в `ApiClient`. Передаёт объект с ошибкой (`{ error }`).
+- `api:orderSending`: Генерируется перед отправкой заказа на сервер в `ApiClient`. Передаёт данные заказа (`{ items: IProduct[], buyer: IBuyer }`).
+- `api:orderSent`: Генерируется после успешной отправки заказа в `ApiClient`. Передаёт ответ сервера (`IOrderResponse`).
+- `api:orderError`: Генерируется при ошибке отправки заказа в `ApiClient`. Передаёт объект с ошибкой (`{ error }`).
+- `basket:open`: Генерируется при клике на кнопку корзины в `Header`. Не передаёт данные.
+- `basket:checkout`: Генерируется при клике на кнопку оформления заказа в `Basket`. Не передаёт данные.
+- `basket:remove`: Генерируется при удалении товара из корзины в `Basket`. Передаёт ID товара (`{ id: string }`).
+- `order:submit`: Генерируется при отправке формы заказа в `OrderForm`. Передаёт данные формы (`IOrderFormData`).
+- `contacts:submit`: Генерируется при отправке формы контактов в `ContactsForm`. Передаёт данные формы (`IContactsFormData`).
+- `success:close`: Генерируется при закрытии окна успеха в `Success`. Не передаёт данные.
+
+## Презентер
+
+Презентер реализован в файле `main.ts` и отвечает за основную логику приложения в архитектуре MVP. Он обеспечивает взаимодействие между моделями данных (`CatalogManager`, `CartManager`, `BuyerManager`, `ApiClient`) и представлениями (`Header`, `Gallery`, `Modal`, `Basket`, `OrderForm`, `ContactsForm`, `Success`) через событийно-ориентированный подход с использованием `EventEmitter`.
