@@ -56,6 +56,14 @@ export class ContactsForm extends Form<IContactsFormData> {
     });
   }
 
+  // НОВЫЙ МЕТОД: очистка формы
+  clearForm(): void {
+    this._emailInput.value = "";
+    this._phoneInput.value = "";
+    this._submitButton.disabled = true;
+    this.setErrors([]);
+  }
+
   private isValidEmail(email: string): boolean {
     // Упрощенное регулярное выражение для email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -71,7 +79,7 @@ export class ContactsForm extends Form<IContactsFormData> {
     );
   }
 
-  private updateButtonState(): void {
+  public updateButtonState(): void {
     const email = this._emailInput.value.trim();
     const phone = this._phoneInput.value.trim();
     const isEmailValid = this.isValidEmail(email);

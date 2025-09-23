@@ -104,15 +104,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Обновляем обработчики
   events.on("basket:checkout", () => {
-    // Используем render для сброса и обновления формы
-    const orderFormElement = orderForm.render({
-      valid: false,
-      errors: ["Заполните форму"],
-    });
+    // Просто показываем форму
+    const orderFormElement = orderForm.render();
     modal.setContent(orderFormElement);
+
+    // Запускаем проверку состояния для текущих данных
+    orderForm.updateButtonState();
   });
 
   // Изменение данных
+
+  events.on("buyer:cleared", () => {
+    orderForm.clearForm();
+    contactsForm.clearForm();
+  });
+
   events.on("contacts:change", (data: { email: string; phone: string }) => {
     try {
       buyerManager.saveBuyerData({
@@ -164,11 +170,10 @@ document.addEventListener("DOMContentLoaded", () => {
         payment: data.payment,
         address: data.address,
       });
-      const contactsFormElement = contactsForm.render({
-        valid: false,
-        errors: ["Заполните контактные данные"],
-      });
+      const contactsFormElement = contactsForm.render();
       modal.setContent(contactsFormElement);
+      // Запускаем проверку состояния для текущих данных
+      contactsForm.updateButtonState();
     } catch (error) {
       const orderFormElement = orderForm.render({
         valid: false,

@@ -66,6 +66,28 @@ export class OrderForm extends Form<IOrderFormData> {
         address: this._addressInput.value.trim(),
       });
     });
+
+    // Устанавливаем кнопку "card" как активную по умолчанию
+    const defaultPaymentButton = this.container.querySelector('[name="card"]');
+    if (defaultPaymentButton) {
+      defaultPaymentButton.classList.add("button_alt-active");
+    }
+  }
+
+  // НОВЫЙ МЕТОД: очистка формы
+  clearForm(): void {
+    this._addressInput.value = "";
+    // Сбрасываем активную кнопку оплаты
+    this._paymentButtons.forEach((btn) =>
+      btn.classList.remove("button_alt-active")
+    );
+    // Устанавливаем кнопку "card" как активную по умолчанию
+    const defaultPaymentButton = this.container.querySelector('[name="card"]');
+    if (defaultPaymentButton) {
+      defaultPaymentButton.classList.add("button_alt-active");
+    }
+    this._submitButton.disabled = true;
+    this.setErrors([]);
   }
 
   private isValidAddress(address: string): boolean {
@@ -78,7 +100,7 @@ export class OrderForm extends Form<IOrderFormData> {
     return payment === "card" || payment === "cash";
   }
 
-  private updateButtonState(): void {
+  public updateButtonState(): void {
     const payment =
       this.container
         .querySelector(".button_alt-active")
