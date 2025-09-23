@@ -10,11 +10,6 @@ export class OrderForm extends Form<IOrderFormData> {
   constructor(events: EventEmitter) {
     super("#order", events);
     this.initPaymentButtons();
-
-    // Добавляем отладку
-    events.on("order:submit", (data) => {
-      console.log("🔍 OrderForm heard order:submit:", data);
-    });
   }
 
   private initPaymentButtons(): void {
@@ -22,8 +17,6 @@ export class OrderForm extends Form<IOrderFormData> {
 
     paymentButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        console.log("💳 Payment button clicked:", button.getAttribute("name"));
-
         // Убираем активный класс у всех кнопок
         paymentButtons.forEach((btn) =>
           btn.classList.remove("button_alt-active")
@@ -42,12 +35,6 @@ export class OrderForm extends Form<IOrderFormData> {
     ) as HTMLInputElement;
     const paymentButton = this.container.querySelector(".button_alt-active");
 
-    console.log("🔍 Validating order form:", {
-      address: addressInput?.value,
-      payment: paymentButton?.getAttribute("name"),
-      hasPayment: !!paymentButton,
-    });
-
     const addressValue = addressInput?.value.trim() || "";
     if (!addressValue) {
       errors.push("Введите адрес доставки");
@@ -60,7 +47,6 @@ export class OrderForm extends Form<IOrderFormData> {
     }
 
     this.setErrors(errors);
-    console.log("📋 Validation errors:", errors);
   }
 
   protected getFormData(): IOrderFormData {
@@ -74,12 +60,10 @@ export class OrderForm extends Form<IOrderFormData> {
       address: addressInput?.value || "",
     };
 
-    console.log("📦 Order form data:", data);
     return data;
   }
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {
-    console.log("🔄 Rendering order form");
     this.reset();
     return super.render(data);
   }

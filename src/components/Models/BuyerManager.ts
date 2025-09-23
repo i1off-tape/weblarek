@@ -1,8 +1,6 @@
 import { IBuyer, TPayment } from "../../types/index.ts";
 import { EventEmitter } from "../base/Events.ts";
 
-//Тест
-
 export class BuyerManager {
   protected buyer: IBuyer = {
     payment: "card", // значение по-умолчанию!
@@ -13,7 +11,6 @@ export class BuyerManager {
 
   constructor(protected events: EventEmitter) {}
 
-  // НОВЫЙ МЕТОД: частичная валидация только обязательных полей
   private validatePartialData(data: Partial<IBuyer>): boolean {
     // Проверяем только те поля, которые присутствуют в данных
     if (
