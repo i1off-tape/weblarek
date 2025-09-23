@@ -119,105 +119,72 @@ document.addEventListener("DOMContentLoaded", () => {
     contactsForm.clearForm();
   });
 
-  events.on("contacts:change", (data: { email: string; phone: string }) => {
+  events.on("contacts:changed", (data: { email: string; phone: string }) => {
     try {
-      buyerManager.saveBuyerData({
-        email: data.email,
-        phone: data.phone,
-      });
-      // Если данные валидны, обновляем состояние формы
-      contactsForm.render({
-        valid: buyerManager.validationData(),
-        errors: [],
-      });
+      buyerManager.updateContactsData(data.email, data.phone);
+      contactsForm.render({ valid: buyerManager.validateData(), errors: [] });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      console.error("❌ Contacts form data error:", errorMessage);
       contactsForm.render({
         valid: false,
-        errors: ["Проверьте правильность введенных данных"],
+        errors: [error instanceof Error ? error.message : "Ошибка валидации"],
       });
     }
   });
 
-  events.on("order:change", (data: { payment: TPayment; address: string }) => {
+  events.on("order:changed", (data: { payment: TPayment; address: string }) => {
     try {
-      buyerManager.saveBuyerData({
-        payment: data.payment,
-        address: data.address,
-      });
-      // Обновляем форму без лишней переменной
-      orderForm.render({
-        valid: buyerManager.validationData(),
-        errors: [],
-      });
+      buyerManager.updateOrderData(data.payment, data.address);
+      orderForm.render({ valid: buyerManager.validateData(), errors: [] });
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      console.error("❌ Order form data error:", errorMessage);
       orderForm.render({
         valid: false,
-        errors: ["Проверьте правильность введенных данных"],
+        errors: [error instanceof Error ? error.message : "Ошибка валидации"],
       });
     }
   });
 
   // Формы
-  events.on("order:submit", (data: { payment: TPayment; address: string }) => {
-    try {
-      buyerManager.saveBuyerData({
-        payment: data.payment,
-        address: data.address,
-      });
+  events.on("order:submit", () => {
+    const buyerData = buyerManager.getBuyerData();
+
+    // Теперь buyerData используется и передается в validateOrderData
+    if (buyerManager.validateOrderData(buyerData.payment, buyerData.address)) {
+      // Переходим к форме контактов
       const contactsFormElement = contactsForm.render();
       modal.setContent(contactsFormElement);
-      // Запускаем проверку состояния для текущих данных
       contactsForm.updateButtonState();
-    } catch (error) {
-      const orderFormElement = orderForm.render({
+    } else {
+      // Показываем ошибку, если данные невалидны
+      orderForm.render({
         valid: false,
         errors: ["Проверьте правильность адреса и способа оплаты"],
       });
-      modal.setContent(orderFormElement);
     }
   });
 
-  events.on("contacts:submit", (data: { email: string; phone: string }) => {
-    const buyerData = {
-      ...buyerManager.getBuyerData(),
-      email: data.email,
-      phone: data.phone,
-    };
-
-    buyerManager.saveBuyerData(buyerData);
-
-    if (buyerManager.validationData()) {
+  events.on("contacts:submit", () => {
+    if (buyerManager.validateData()) {
       const products = cartManager.getProductsList();
       const total = cartManager.getTotalPrice();
+      const buyerData = buyerManager.getBuyerData();
 
       apiClient
         .sendOrder(products, buyerData)
         .then((response: IOrderResponse) => {
-          // ПРАВИЛЬНАЯ ПРОВЕРКА: если есть id - заказ успешно создан
           if (response.id) {
-            // Показываем окно успеха с общей суммой из ответа API
             const successElement = success.render({
               total: response.total || total,
             });
             modal.setContent(successElement);
 
-            // Очищаем корзину после успешного заказа
             cartManager.clearCart();
-            buyerManager.clearBuyerData(); // Очищаем данные покупателя
+            buyerManager.clearBuyerData();
           } else {
             console.error("❌ Order creation failed - no order ID in response");
-            // Можно показать сообщение об ошибке пользователю
           }
         })
         .catch((error) => {
           console.error("❌ Order error:", error.message);
-          // Показать ошибку пользователю
           alert("Ошибка при оформлении заказа: " + error.message);
         });
     } else {

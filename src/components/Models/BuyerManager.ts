@@ -1,11 +1,9 @@
 import { IBuyer, TPayment } from "../../types/index.ts";
 import { EventEmitter } from "../base/Events.ts";
 
-//Тест
-
 export class BuyerManager {
   protected buyer: IBuyer = {
-    payment: "card", // значение по-умолчанию!
+    payment: "card",
     email: "",
     phone: "",
     address: "",
@@ -13,60 +11,69 @@ export class BuyerManager {
 
   constructor(protected events: EventEmitter) {}
 
-  // НОВЫЙ МЕТОД: частичная валидация только обязательных полей
-  private validatePartialData(data: Partial<IBuyer>): boolean {
-    // Проверяем только те поля, которые присутствуют в данных
-    if (
-      data.payment !== undefined &&
-      data.payment !== "card" &&
-      data.payment !== "cash"
-    ) {
+  // Валидация полей заказа (адрес и оплата)
+  validateOrderData(payment?: TPayment, address?: string): boolean {
+    const actualPayment = payment || this.buyer.payment;
+    const actualAddress = address !== undefined ? address : this.buyer.address;
+
+    if (actualPayment !== "card" && actualPayment !== "cash") {
       return false;
     }
-    if (data.address !== undefined && data.address.trim().length <= 5) {
-      return false;
-    }
-    if (
-      data.email !== undefined &&
-      data.email !== "" &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)
-    ) {
-      return false;
-    }
-    if (
-      data.phone !== undefined &&
-      data.phone !== "" &&
-      !/^\+?[\d\s\-\(\)]{10,}$/.test(data.phone)
-    ) {
+    if (actualAddress.trim().length <= 5) {
       return false;
     }
     return true;
   }
 
-  private validateData(data: IBuyer): boolean {
+  // Валидация контактных данных
+  validateContactsData(email?: string, phone?: string): boolean {
+    const actualEmail = email !== undefined ? email : this.buyer.email;
+    const actualPhone = phone !== undefined ? phone : this.buyer.phone;
+
+    if (actualEmail !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(actualEmail)) return false;
+    }
+
+    if (actualPhone !== "") {
+      const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
+      if (!phoneRegex.test(actualPhone)) return false;
+    }
+    return true;
+  }
+
+  // Полная валидация всех данных
+  validateData(): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
 
     return (
-      emailRegex.test(data.email) &&
-      phoneRegex.test(data.phone) &&
-      data.address.trim().length > 5 &&
-      (data.payment === "card" || data.payment === "cash")
+      emailRegex.test(this.buyer.email) &&
+      phoneRegex.test(this.buyer.phone) &&
+      this.buyer.address.trim().length > 5 &&
+      (this.buyer.payment === "card" || this.buyer.payment === "cash")
     );
   }
 
-  validationData(): boolean {
-    return this.validateData(this.buyer);
-  }
-
-  saveBuyerData(buyerData: Partial<IBuyer>): void {
-    // Используем частичную валидацию для промежуточных данных
-    if (!this.validatePartialData(buyerData)) {
-      throw new Error("Данные покупателя некорректны");
+  // Обновление данных заказа (вызывается при изменении полей)
+  updateOrderData(payment: TPayment, address: string): void {
+    if (!this.validateOrderData(payment, address)) {
+      throw new Error("Данные заказа некорректны");
     }
 
-    // Обновляем только переданные поля
-    this.buyer = { ...this.buyer, ...buyerData };
+    this.buyer.payment = payment;
+    this.buyer.address = address;
+    this.events.emit("buyer:changed", this.buyer);
+  }
+
+  // Обновление контактных данных (вызывается при изменении полей)
+  updateContactsData(email: string, phone: string): void {
+    if (!this.validateContactsData(email, phone)) {
+      throw new Error("Контактные данные некорректны");
+    }
+
+    this.buyer.email = email;
+    this.buyer.phone = phone;
     this.events.emit("buyer:changed", this.buyer);
   }
 
