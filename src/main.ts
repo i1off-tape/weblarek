@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
       catalogManager.saveProductList(data.items);
     })
     .catch((error) => {
-      console.error("❌ API Error:", error); // ДОБАВИТЬ
+      console.error("❌ API Error:", error);
     });
 
   // ОБРАБОТЧИКИ СОБЫТИЙ

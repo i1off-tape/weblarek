@@ -41,8 +41,6 @@ export class ApiClient {
         items: items.map((item) => item.id), // только ID товаров
       };
 
-      console.log("📤 Sending order to API:", orderData);
-
       const response = await this.api.post<IOrderResponse>(
         "/order/",
         orderData
