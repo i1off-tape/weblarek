@@ -29,14 +29,14 @@ export class BuyerManager {
     if (
       data.email !== undefined &&
       data.email !== "" &&
-      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(data.email)
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)
     ) {
       return false;
     }
     if (
       data.phone !== undefined &&
       data.phone !== "" &&
-      !/^\+?[0-9]{10,15}$/.test(data.phone)
+      !/^\+?[\d\s\-\(\)]{10,}$/.test(data.phone)
     ) {
       return false;
     }
@@ -44,8 +44,8 @@ export class BuyerManager {
   }
 
   private validateData(data: IBuyer): boolean {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    const phoneRegex = /^\+?[0-9]{10,15}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
 
     return (
       emailRegex.test(data.email) &&

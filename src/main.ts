@@ -112,6 +112,51 @@ document.addEventListener("DOMContentLoaded", () => {
     modal.setContent(orderFormElement);
   });
 
+  // Изменение данных
+  events.on("contacts:change", (data: { email: string; phone: string }) => {
+    try {
+      buyerManager.saveBuyerData({
+        email: data.email,
+        phone: data.phone,
+      });
+      // Если данные валидны, обновляем состояние формы
+      contactsForm.render({
+        valid: buyerManager.validationData(),
+        errors: [],
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      console.error("❌ Contacts form data error:", errorMessage);
+      contactsForm.render({
+        valid: false,
+        errors: ["Проверьте правильность введенных данных"],
+      });
+    }
+  });
+
+  events.on("order:change", (data: { payment: TPayment; address: string }) => {
+    try {
+      buyerManager.saveBuyerData({
+        payment: data.payment,
+        address: data.address,
+      });
+      // Обновляем форму без лишней переменной
+      orderForm.render({
+        valid: buyerManager.validationData(),
+        errors: [],
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      console.error("❌ Order form data error:", errorMessage);
+      orderForm.render({
+        valid: false,
+        errors: ["Проверьте правильность введенных данных"],
+      });
+    }
+  });
+
   // Формы
   events.on("order:submit", (data: { payment: TPayment; address: string }) => {
     try {

@@ -25,23 +25,40 @@ export class OrderForm extends Form<IOrderFormData> {
       this.container
     );
 
+    // Обработчик для кнопок оплаты
     this._paymentButtons.forEach((button) => {
       button.addEventListener("click", () => {
         this._paymentButtons.forEach((btn) =>
           btn.classList.remove("button_alt-active")
         );
         button.classList.add("button_alt-active");
+        const payment = button.getAttribute("name") || "";
+        // Отправляем данные в BuyerManager при выборе оплаты
+        this.events.emit("order:change", {
+          payment,
+          address: this._addressInput.value.trim(),
+        });
         this.updateButtonState();
       });
     });
 
+    // Обработчик для поля адреса
     this._addressInput.addEventListener("input", () => {
+      // Отправляем данные в BuyerManager при изменении адреса
+      this.events.emit("order:change", {
+        payment:
+          this.container
+            .querySelector(".button_alt-active")
+            ?.getAttribute("name") || "",
+        address: this._addressInput.value.trim(),
+      });
       this.updateButtonState();
     });
 
+    // Обработчик отправки формы
     this._submitButton.addEventListener("click", (event: Event) => {
       event.preventDefault();
-      events.emit("order:submit", {
+      this.events.emit("order:submit", {
         payment:
           this.container
             .querySelector(".button_alt-active")
@@ -51,15 +68,45 @@ export class OrderForm extends Form<IOrderFormData> {
     });
   }
 
+  private isValidAddress(address: string): boolean {
+    // Адрес должен быть длиннее 5 символов (согласно BuyerManager)
+    return address.trim().length > 5;
+  }
+
+  private isValidPayment(payment: string): boolean {
+    // Проверяем, что выбран способ оплаты (card или cash)
+    return payment === "card" || payment === "cash";
+  }
+
   private updateButtonState(): void {
-    const hasPayment = !!this.container.querySelector(".button_alt-active");
-    const hasAddress = this._addressInput.value.trim().length > 0;
-    this._submitButton.disabled = !(hasPayment && hasAddress);
-    this.setErrors(this._submitButton.disabled ? ["Заполните форму"] : []);
+    const payment =
+      this.container
+        .querySelector(".button_alt-active")
+        ?.getAttribute("name") || "";
+    const address = this._addressInput.value.trim();
+    const isPaymentValid = this.isValidPayment(payment);
+    const isAddressValid = this.isValidAddress(address);
+
+    // Кнопка активна только если оба поля валидны
+    this._submitButton.disabled = !(isPaymentValid && isAddressValid);
+
+    // Формируем ошибки
+    const errors: string[] = [];
+    if (!payment) {
+      errors.push("Выберите способ оплаты");
+    } else if (!isPaymentValid) {
+      errors.push("Некорректный способ оплаты");
+    }
+    if (address.length === 0) {
+      errors.push("Введите адрес");
+    } else if (!isAddressValid) {
+      errors.push("Адрес должен быть длиннее 5 символов");
+    }
+
+    this.setErrors(errors);
   }
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {
-    this.reset();
     if (data?.errors) {
       this.setErrors(data.errors);
     }
