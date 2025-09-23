@@ -16,7 +16,8 @@ import { OrderForm } from "./components/View/OrderForm.ts";
 import { ContactsForm } from "./components/View/ContactsForm.ts";
 import { Success } from "./components/View/Success.ts";
 import { CardPreview } from "./components/View/CardPreview.ts";
-import { IProduct, IOrderResponse, TPayment } from "./types/index.ts";
+import { IProduct, IOrderResponse, TPayment, IBuyer } from "./types/index.ts";
+import { CardBasket } from "./components/View/CardBasket.ts";
 
 // ОБЯЗАТЕЛЬНО: обернуть в DOMContentLoaded
 document.addEventListener("DOMContentLoaded", () => {
@@ -48,15 +49,15 @@ document.addEventListener("DOMContentLoaded", () => {
       catalogManager.saveProductList(data.items);
     })
     .catch((error) => {
-      console.error("❌ API Error:", error); // ДОБАВИТЬ
+      console.error("❌ API Error:", error);
     });
 
   // ОБРАБОТЧИКИ СОБЫТИЙ
 
   // Каталог товаров - ПОЛНЫЙ обработчик
   events.on("catalog:changed", (items: IProduct[]) => {
-    const cardCatalog = new CardCatalog(document.createElement("div"));
     const cards = items.map((item) => {
+      const cardCatalog = new CardCatalog(document.createElement("div"));
       const card = cardCatalog.render(item);
 
       // добавляем обработчик клика на КАРТОЧКУ
@@ -72,28 +73,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Просмотр товара
   events.on("catalog:productSelected", (product: IProduct) => {
-    const cardPreview = new CardPreview(document.createElement("div"));
+    const cardPreview = new CardPreview(document.createElement("div"), events);
+    cardPreview.setButtonState(cartManager.hasProduct(product.id));
     const preview = cardPreview.render(product);
-
-    // Добавляем кнопку "В корзину"
-    const button = preview.querySelector(".card__button");
-    if (button && product.price !== null) {
-      const isInCart = cartManager.hasProduct(product.id);
-      if (isInCart) {
-        button.textContent = "Удалить из корзины";
-        button.addEventListener("click", () => {
-          events.emit("basket:remove", { id: product.id }); // Используем существующий событие удаления
-          modal.close();
-        });
-      } else {
-        button.textContent = "В корзину";
-        button.addEventListener("click", () => {
-          events.emit("card:addToBasket", { id: product.id });
-          modal.close();
-        });
-      }
-    }
-
     modal.setContent(preview);
     modal.open();
   });
@@ -101,104 +83,138 @@ document.addEventListener("DOMContentLoaded", () => {
   // Корзина
   events.on("cart:changed", (items: IProduct[]) => {
     header.counter = items.length;
-    basket.items = items;
+    const basketItems = items.map((item, index) => {
+      const cardContainer = document.createElement("div");
+      const cardBasket = new CardBasket(cardContainer, events);
+      return cardBasket.render(item, index);
+    });
+    basket.items = basketItems;
     basket.total = cartManager.getTotalPrice();
   });
 
   events.on("basket:open", () => {
-    basket.items = cartManager.getProductsList();
-    basket.total = cartManager.getTotalPrice();
-
+    events.emit("cart:changed", cartManager.getProductsList());
     modal.setContent(basketElement);
     modal.open();
   });
 
   events.on("basket:remove", (data: { id: string }) => {
     cartManager.removeProduct(data.id);
-    catalogManager.saveProductList(catalogManager.getProductList());
   });
 
   // Обновляем обработчики
   events.on("basket:checkout", () => {
-    // Используем render для сброса и обновления формы
-    const orderFormElement = orderForm.render({
-      valid: false,
-      errors: ["Заполните форму"],
-    });
+    // Просто показываем форму
+    const orderFormElement = orderForm.render();
     modal.setContent(orderFormElement);
   });
 
-  // Формы
-  events.on("order:submit", (data: { payment: TPayment; address: string }) => {
-    try {
-      // Сохраняем только адрес и способ оплаты
-      buyerManager.saveBuyerData({
-        payment: data.payment,
-        address: data.address,
-        // email и phone остаются пустыми - это нормально на этом этапе
-      });
-    } catch (error) {
-      // Показываем ошибку пользователю
-      const orderFormElement = orderForm.render({
-        valid: false,
-        errors: ["Проверьте введенные данные"],
-      });
-      modal.setContent(orderFormElement);
-      return;
-    }
+  // Изменение данных
 
-    const contactsFormElement = contactsForm.render({
-      valid: false,
-      errors: ["Заполните контактные данные"],
-    });
-    modal.setContent(contactsFormElement);
+  events.on("buyer:cleared", () => {
+    orderForm.clearForm();
+    contactsForm.clearForm();
+    orderForm.render({ valid: false, errors: [] });
+    contactsForm.render({ valid: false, errors: [] });
   });
 
-  events.on("contacts:submit", (data: { email: string; phone: string }) => {
-    const buyerData = {
-      ...buyerManager.getBuyerData(),
-      email: data.email,
-      phone: data.phone,
-    };
+  events.on("contacts:changed", (data: { email: string; phone: string }) => {
+    try {
+      buyerManager.updateContactsData(data.email, data.phone);
+      // Если успешно - очищаем ошибки
+      contactsForm.render({ valid: true, errors: [] });
+    } catch (error) {
+      // Показываем конкретные ошибки из модели
+      const errorMessage =
+        error instanceof Error ? error.message : "Ошибка валидации";
+      contactsForm.render({
+        valid: false,
+        errors: errorMessage.split(", "), // Разделяем ошибки по запятой
+      });
+    }
+  });
 
-    buyerManager.saveBuyerData(buyerData);
+  events.on("order:changed", (data: { payment: TPayment; address: string }) => {
+    try {
+      buyerManager.updateOrderData(data.payment, data.address);
+      // Если успешно - очищаем ошибки
+      orderForm.render({ valid: true, errors: [] });
+    } catch (error) {
+      // Показываем конкретные ошибки из модели
+      const errorMessage =
+        error instanceof Error ? error.message : "Ошибка валидации";
+      orderForm.render({
+        valid: false,
+        errors: errorMessage.split(", "), // Разделяем ошибки по запятой
+      });
+    }
+  });
 
-    if (buyerManager.validationData()) {
+  // Формы
+  events.on("order:submit", () => {
+    const buyerData = buyerManager.getBuyerData();
+    const errors = buyerManager.validateOrderDataWithErrors(
+      buyerData.payment,
+      buyerData.address
+    );
+
+    if (errors.length === 0) {
+      // Переходим к форме контактов
+      const contactsFormElement = contactsForm.render();
+      modal.setContent(contactsFormElement);
+    } else {
+      // Показываем конкретные ошибки из модели
+      orderForm.render({
+        valid: false,
+        errors: errors, // Используем массив ошибок из модели
+      });
+    }
+  });
+
+  events.on("contacts:submit", () => {
+    const errors = buyerManager.validateContactsDataWithErrors();
+
+    if (errors.length === 0 && buyerManager.validateData()) {
       const products = cartManager.getProductsList();
       const total = cartManager.getTotalPrice();
+      const buyerData = buyerManager.getBuyerData();
 
       apiClient
         .sendOrder(products, buyerData)
         .then((response: IOrderResponse) => {
-          // ПРАВИЛЬНАЯ ПРОВЕРКА: если есть id - заказ успешно создан
           if (response.id) {
-            // Показываем окно успеха с общей суммой из ответа API
             const successElement = success.render({
               total: response.total || total,
             });
             modal.setContent(successElement);
 
-            // Очищаем корзину после успешного заказа
             cartManager.clearCart();
-            buyerManager.clearBuyerData(); // Очищаем данные покупателя
+            buyerManager.clearBuyerData();
           } else {
             console.error("❌ Order creation failed - no order ID in response");
-            // Можно показать сообщение об ошибке пользователю
           }
         })
         .catch((error) => {
           console.error("❌ Order error:", error.message);
-          // Показать ошибку пользователю
           alert("Ошибка при оформлении заказа: " + error.message);
         });
     } else {
+      // Показываем конкретные ошибки контактов
+      const contactErrors = buyerManager.validateContactsDataWithErrors();
+      contactsForm.render({
+        valid: false,
+        errors: contactErrors,
+      });
       console.error("❌ Buyer data validation failed");
-      alert("Проверьте правильность введенных данных");
     }
   });
 
   // Модальные окна
   events.on("success:close", () => {
+    modal.close();
+  });
+
+  events.on("modal:close", () => {
     modal.close();
   });
 
@@ -217,7 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const product = catalogManager.getProductById(data.id);
     if (product) {
       cartManager.addProduct(product);
-      catalogManager.saveProductList(catalogManager.getProductList());
+      modal.close();
     }
   });
 }); // Конец DOMContentLoaded

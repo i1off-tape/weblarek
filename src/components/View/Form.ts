@@ -36,30 +36,8 @@ export abstract class Form<T extends object> extends Component<IFormState> {
 
     // Устанавливаем начальное состояние
     this.setErrors(["Заполните форму"]);
-
-    // Обработчики событий - УБРАТЬ ДУБЛИРОВАНИЕ!
-    this.container.addEventListener("input", () => {
-      this.validateForm();
-    });
-
-    this.container.addEventListener("submit", (e: Event) => {
-      e.preventDefault();
-      if (this._submit.disabled) return; // Важно: проверяем disabled
-
-      // Получаем имя формы из атрибута name
-      const formElement = this.container as HTMLFormElement;
-      const formName = formElement.getAttribute("name");
-
-      if (formName) {
-        this.events.emit(`${formName}:submit`, this.getFormData());
-      }
-    });
-
-    this.validateForm();
+    this._submit.disabled = true;
   }
-
-  protected abstract validateForm(): void;
-  protected abstract getFormData(): T;
 
   protected setErrors(errors: string[]): void {
     if (this._errors) {
@@ -68,20 +46,5 @@ export abstract class Form<T extends object> extends Component<IFormState> {
     if (this._submit) {
       this._submit.disabled = errors.length > 0;
     }
-  }
-
-  // Метод для сброса формы
-  reset(): void {
-    const inputs = this.container.querySelectorAll("input");
-    inputs.forEach((input) => {
-      input.value = "";
-    });
-
-    const activeButtons = this.container.querySelectorAll(".button_alt-active");
-    activeButtons.forEach((button) => {
-      button.classList.remove("button_alt-active");
-    });
-
-    this.validateForm();
   }
 }
