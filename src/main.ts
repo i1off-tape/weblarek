@@ -16,7 +16,7 @@ import { OrderForm } from "./components/View/OrderForm.ts";
 import { ContactsForm } from "./components/View/ContactsForm.ts";
 import { Success } from "./components/View/Success.ts";
 import { CardPreview } from "./components/View/CardPreview.ts";
-import { IProduct, IOrderResponse, TPayment } from "./types/index.ts";
+import { IProduct, IOrderResponse, TPayment, IBuyer } from "./types/index.ts";
 import { CardBasket } from "./components/View/CardBasket.ts";
 
 // ОБЯЗАТЕЛЬНО: обернуть в DOMContentLoaded
@@ -112,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   events.on("basket:open", () => {
+    events.emit("cart:changed", cartManager.getProductsList());
     modal.setContent(basketElement);
     modal.open();
   });
@@ -133,27 +134,22 @@ document.addEventListener("DOMContentLoaded", () => {
   // Формы
   events.on("order:submit", (data: { payment: TPayment; address: string }) => {
     try {
-      // Сохраняем только адрес и способ оплаты
       buyerManager.saveBuyerData({
         payment: data.payment,
         address: data.address,
-        // email и phone остаются пустыми - это нормально на этом этапе
       });
+      const contactsFormElement = contactsForm.render({
+        valid: false,
+        errors: ["Заполните контактные данные"],
+      });
+      modal.setContent(contactsFormElement);
     } catch (error) {
-      // Показываем ошибку пользователю
       const orderFormElement = orderForm.render({
         valid: false,
-        errors: ["Проверьте введенные данные"],
+        errors: ["Проверьте правильность адреса и способа оплаты"],
       });
       modal.setContent(orderFormElement);
-      return;
     }
-
-    const contactsFormElement = contactsForm.render({
-      valid: false,
-      errors: ["Заполните контактные данные"],
-    });
-    modal.setContent(contactsFormElement);
   });
 
   events.on("contacts:submit", (data: { email: string; phone: string }) => {

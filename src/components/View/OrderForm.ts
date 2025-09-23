@@ -1,5 +1,6 @@
 import { Form } from "./Form";
 import { EventEmitter } from "../base/Events";
+import { ensureElement } from "../../utils/utils";
 
 interface IOrderFormData {
   payment: string;
@@ -7,80 +8,64 @@ interface IOrderFormData {
 }
 
 export class OrderForm extends Form<IOrderFormData> {
+  protected _addressInput: HTMLInputElement;
+  protected _paymentButtons: NodeListOf<HTMLButtonElement>;
+  protected _submitButton: HTMLButtonElement;
+
   constructor(events: EventEmitter) {
     super("#order", events);
-    this.initPaymentButtons();
 
-    // Добавляем отладку
-    events.on("order:submit", (data) => {
-      console.log("🔍 OrderForm heard order:submit:", data);
-    });
-  }
+    this._addressInput = ensureElement<HTMLInputElement>(
+      '[name="address"]',
+      this.container
+    );
+    this._paymentButtons = this.container.querySelectorAll(".button_alt");
+    this._submitButton = ensureElement<HTMLButtonElement>(
+      'button[type="submit"]',
+      this.container
+    );
 
-  private initPaymentButtons(): void {
-    const paymentButtons = this.container.querySelectorAll(".button_alt");
-
-    paymentButtons.forEach((button) => {
+    this._paymentButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        console.log("💳 Payment button clicked:", button.getAttribute("name"));
-
-        // Убираем активный класс у всех кнопок
-        paymentButtons.forEach((btn) =>
+        this._paymentButtons.forEach((btn) =>
           btn.classList.remove("button_alt-active")
         );
-        // Добавляем активный класс к выбранной кнопке
         button.classList.add("button_alt-active");
-        this.validateForm();
+        this.updateButtonState();
+      });
+    });
+
+    this._addressInput.addEventListener("input", () => {
+      this.updateButtonState();
+    });
+
+    this._submitButton.addEventListener("click", (event: Event) => {
+      event.preventDefault();
+      events.emit("order:submit", {
+        payment:
+          this.container
+            .querySelector(".button_alt-active")
+            ?.getAttribute("name") || "",
+        address: this._addressInput.value.trim(),
       });
     });
   }
 
-  protected validateForm(): void {
-    const errors: string[] = [];
-    const addressInput = this.container.querySelector(
-      '[name="address"]'
-    ) as HTMLInputElement;
-    const paymentButton = this.container.querySelector(".button_alt-active");
-
-    console.log("🔍 Validating order form:", {
-      address: addressInput?.value,
-      payment: paymentButton?.getAttribute("name"),
-      hasPayment: !!paymentButton,
-    });
-
-    const addressValue = addressInput?.value.trim() || "";
-    if (!addressValue) {
-      errors.push("Введите адрес доставки");
-    } else if (addressValue.length <= 5) {
-      errors.push("Адрес слишком короткий (минимум 6 символов)");
-    }
-
-    if (!paymentButton) {
-      errors.push("Выберите способ оплаты");
-    }
-
-    this.setErrors(errors);
-    console.log("📋 Validation errors:", errors);
-  }
-
-  protected getFormData(): IOrderFormData {
-    const activeButton = this.container.querySelector(".button_alt-active");
-    const addressInput = this.container.querySelector(
-      '[name="address"]'
-    ) as HTMLInputElement;
-
-    const data = {
-      payment: activeButton?.getAttribute("name") || "",
-      address: addressInput?.value || "",
-    };
-
-    console.log("📦 Order form data:", data);
-    return data;
+  private updateButtonState(): void {
+    const hasPayment = !!this.container.querySelector(".button_alt-active");
+    const hasAddress = this._addressInput.value.trim().length > 0;
+    this._submitButton.disabled = !(hasPayment && hasAddress);
+    this.setErrors(this._submitButton.disabled ? ["Заполните форму"] : []);
   }
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {
-    console.log("🔄 Rendering order form");
     this.reset();
-    return super.render(data);
+    if (data?.errors) {
+      this.setErrors(data.errors);
+    }
+    if (data?.valid !== undefined) {
+      this._submitButton.disabled = !data.valid;
+    }
+    return this.container;
   }
 }

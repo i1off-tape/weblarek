@@ -1,8 +1,6 @@
 import { Component } from "../base/Component";
 import { EventEmitter } from "../base/Events";
 import { ensureElement } from "../../utils/utils";
-import { IProduct } from "../../types";
-import { CardBasket } from "./CardBasket";
 
 interface IBasketView {
   items: HTMLElement[];
