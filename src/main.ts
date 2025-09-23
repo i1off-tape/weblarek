@@ -219,7 +219,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const product = catalogManager.getProductById(data.id);
     if (product) {
       cartManager.addProduct(product);
-      catalogManager.saveProductList(catalogManager.getProductList());
     }
   });
 }); // Конец DOMContentLoaded
