@@ -151,16 +151,16 @@ class CatalogManager {
   /**
    * Защищенные поля:
    */
-  protected products: IProduct[];
-  protected selectedProduct: IProduct | null;
+  protected items: IProduct[] = [];
+  protected selectedProduct: IProduct | null = null;
 
   /**
-   * Создаем экземпляр менеджера каталога товаров
+   * Создаем экземпляр менедыжера каталога товаров
    * @param initialProducts - Начальный массив товаров для инициализации каталога
    *
    * По умолчанию - пустой массив.
    */
-  constructor(initialProducts: IProduct[] = []);
+  constructor(protected events: EventEmitter);
 
   // Методы класса
 
@@ -224,19 +224,21 @@ class BuyerManager {
     address: "",
   };
 
-  // Методы класса
+  // ОСНОВНЫЕ МЕТОДЫ ВАЛИДАЦИИ
+  validateOrderDataWithErrors(payment?: TPayment, address?: string): string[]; // Детальная валидация с конкретными ошибками
+  validateContactsDataWithErrors(email?: string, phone?: string): string[]; // Детальная валидация контактов
 
-  getBuyerData(): IBuyer; // получить данные покупателя
+  // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (boolean)
+  validateOrderData(payment?: TPayment, address?: string): boolean;
+  validateContactsData(email?: string, phone?: string): boolean;
+  validateData(): boolean;
 
-  private validatePartialData(data: Partial<IBuyer>): boolean; // НОВЫЙ МЕТОД: частичная валидация только обязательных полей
+  // ОБНОВЛЕНИЕ ДАННЫХ (вызывается при изменении полей)
+  updateOrderData(payment: TPayment, address: string): void; // Сохраняет данные заказа
+  updateContactsData(email: string, phone: string): void; // Сохраняет контактные данные
 
-  saveBuyerData(buyerData: Partial<IBuyer>): void; // сохранить введённые данные покупателя.
-
-  private validateData(data: IBuyer): boolean; // внутренняя валидация данных
-
-  validationData(): boolean; // вызов валидации данных при сохранении
-
-  clearBuyerData(): void; // Очистка данных пользователя
+  getBuyerData(): IBuyer;
+  clearBuyerData(): void;
 }
 ```
 
@@ -261,14 +263,10 @@ class ApiClient {
   }
 
   // Получить каталог товаров с сервера
-  async getProducts(): Promise<{ products: IProduct[] }>;
+   async getProducts(): Promise<IProductResponse>;
 
   // Отправка заказа на сервер
-  async sendOrder(
-    products: IProduct[],
-    buyer: IBuyer
-  ): Promise<{ success: boolean; code: number }>;
-}
+  async sendOrder(items: IProduct[], buyer: IBuyer): Promise<IOrderResponse>
 ```
 
 Также написали интерфейсы для удобства.
@@ -401,7 +399,7 @@ class CardCatalog {
 
 ```ts
 class CardBasket {
-  constructor(container: HTMLElement);
+  constructor(container: HTMLElement, protected events: EventEmitter);
 
   render(data: IProduct): HTMLElement; // рендерит карточку с названием и ценой
 }
@@ -411,7 +409,14 @@ class CardBasket {
 
 ```ts
 class CardPreview {
-  constructor(container: HTMLElement);
+  constructor(container: HTMLElement, events: EventEmitter);
+
+  setButtonState(isInCart: boolean): void; // - устанавливает состояние кнопки (в корзине/не в корзине)
+
+  protected setButtonListeners(
+    button: HTMLButtonElement,
+    productId: string
+  ): void; // - добавляет обработчики клика на кнопку (удаление из корзины или добавление)
 
   render(data: IProduct): HTMLElement {}
   // рендерит карточку с описанием, изображением, названием, категорией, ценой и кнопкой «Купить» (или «Недоступно» для товаров с `price === null`).
@@ -428,10 +433,7 @@ class Form {
 
   constructor(templateId: string, events: EventEmitter); // - принимает ID шаблона и эмиттер.
 
-  protected abstract validateForm(): void; // - абстрактная валидация.
-  protected abstract getFormData(): T; // - абстрактное получение данных.
   protected setErrors(errors: string[]): void; // - установить ошибки и отключить кнопку.
-  reset(): void; // - сброс формы.
 }
 ```
 
@@ -448,13 +450,13 @@ interface IFormState {
 
 ```ts
 class OrderForm {
+  protected _addressInput: HTMLInputElement;
+  protected _paymentButtons: NodeListOf<HTMLButtonElement>;
+  protected _submitButton: HTMLButtonElement;
+
   constructor(events: EventEmitter) {}
 
-  private initPaymentButtons(): void; // - инициализирует обработчики для кнопок выбора способа оплаты.
-
-  protected validateForm(): void; // - валидирует адрес и способ оплаты, отображая ошибки.
-
-  protected getFormData(): IOrderFormData; // - возвращает данные формы (способ оплаты и адрес).
+  clearForm(): void; // - очищает форму
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement; // - рендерит форму с сбросом данных.
 }
@@ -473,15 +475,13 @@ interface IOrderFormData {
 
 ```ts
 class ContactsForm {
+  protected _emailInput: HTMLInputElement;
+  protected _phoneInput: HTMLInputElement;
+  protected _submitButton: HTMLButtonElement;
+
   constructor(events: EventEmitter) {}
 
-  protected validateForm(): void; // - валидирует email и телефон, отображая ошибки.
-
-  private isValidEmail(email: string): boolean; // - проверяет корректность email.
-
-  private isValidPhone(phone: string): boolean; // - проверяет корректность телефона.
-
-  protected getFormData(): IContactsFormData; // - возвращает данные формы (email и телефон).
+  clearForm(): void; // - очищает форму
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement; // - рендерит форму с сбросом данных.
 }
@@ -507,7 +507,7 @@ class Basket {
 
   constructor(events: EventEmitter) {}
 
-  set items(items: IProduct[]): void; // - устанавливает список товаров в корзине, отображая надпись «Корзина пуста» при отсутствии товаров.
+  set items(items: HTMLElement[]): void; // - устанавливает список товаров в корзине как DOM-элементы
   set total(total: number): void; //  - устанавливает итоговую сумму в формате «X синапсов».
   render(data?: Partial<IBasketView>): HTMLElement; // - рендерит корзину с обновлением списка товаров и суммы.
 }
@@ -517,7 +517,7 @@ class Basket {
 
 ```ts
 interface IBasketView {
-  items: IProduct[];
+  items: HTMLElement[];
   total: number;
 }
 ```
@@ -550,25 +550,21 @@ interface ISuccess {
 В приложении используется событийно-ориентированный подход для взаимодействия между слоями MVP. События генерируются через `EventEmitter` и обрабатываются в `main.ts` или соответствующих компонентах. Ниже перечислены все события, их назначение и передаваемые данные:
 
 - `catalog:changed`: Генерируется при обновлении списка товаров в `CatalogManager`. Передаёт массив товаров (`IProduct[]`).
-- `catalog:selectedProductChanged`: Генерируется при выборе товара в `CatalogManager`. Передаёт выбранный товар (`IProduct`).
+- `catalog:productSelected`: Генерируется при выборе товара для просмотра. Передаёт данные товара (`IProduct`).
 - `cart:changed`: Генерируется при изменении корзины (добавление, удаление, очистка) в `CartManager`. Передаёт массив товаров в корзине (`IProduct[]`).
-- `cart:productAdded`: Генерируется при добавлении товара в корзину в `CartManager`. Передаёт добавленный товар (`IProduct`).
-- `cart:productRemoved`: Генерируется при удалении товара из корзины в `CartManager`. Передаёт удалённый товар (`IProduct`).
-- `cart:cleared`: Генерируется при очистке корзины в `CartManager`. Передаёт массив очищенных товаров (`IProduct[]`).
 - `buyer:changed`: Генерируется при обновлении данных покупателя в `BuyerManager`. Передаёт данные покупателя (`IBuyer`).
 - `buyer:cleared`: Генерируется при очистке данных покупателя в `BuyerManager`. Не передаёт данные.
-- `api:productsLoading`: Генерируется перед загрузкой товаров с сервера в `ApiClient`. Не передаёт данные.
-- `api:productsLoaded`: Генерируется после успешной загрузки товаров в `ApiClient`. Передаёт ответ сервера (`IProductResponse`).
-- `api:productsError`: Генерируется при ошибке загрузки товаров в `ApiClient`. Передаёт объект с ошибкой (`{ error }`).
-- `api:orderSending`: Генерируется перед отправкой заказа на сервер в `ApiClient`. Передаёт данные заказа (`{ items: IProduct[], buyer: IBuyer }`).
-- `api:orderSent`: Генерируется после успешной отправки заказа в `ApiClient`. Передаёт ответ сервера (`IOrderResponse`).
-- `api:orderError`: Генерируется при ошибке отправки заказа в `ApiClient`. Передаёт объект с ошибкой (`{ error }`).
 - `basket:open`: Генерируется при клике на кнопку корзины в `Header`. Не передаёт данные.
 - `basket:checkout`: Генерируется при клике на кнопку оформления заказа в `Basket`. Не передаёт данные.
 - `basket:remove`: Генерируется при удалении товара из корзины в `Basket`. Передаёт ID товара (`{ id: string }`).
-- `order:submit`: Генерируется при отправке формы заказа в `OrderForm`. Передаёт данные формы (`IOrderFormData`).
-- `contacts:submit`: Генерируется при отправке формы контактов в `ContactsForm`. Передаёт данные формы (`IContactsFormData`).
+- `order:submit`: только навигация между формами (данные уже в модели)
+- `contacts:submit`: отправка заказа (данные уже в модели)
 - `success:close`: Генерируется при закрытии окна успеха в `Success`. Не передаёт данные.
+- `order:changed`: данные заказа изменены (payment, address)
+- `contacts:changed`: контактные данные изменены (email, phone)
+- `modal:close`: Генерируется при закрытии модального окна. Не передаёт данные.
+- `card:select`: Генерируется при клике на карточку товара в каталоге. Передаёт ID товара (`{ id: string }`).
+- `card:addToBasket`: Генерируется при добавлении товара в корзину из превью. Передаёт ID товара ({ id: string }).
 
 ## Презентер
 

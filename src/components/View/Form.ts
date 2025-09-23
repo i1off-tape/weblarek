@@ -47,17 +47,4 @@ export abstract class Form<T extends object> extends Component<IFormState> {
       this._submit.disabled = errors.length > 0;
     }
   }
-
-  // Метод для сброса формы
-  reset(): void {
-    const inputs = this.container.querySelectorAll("input");
-    inputs.forEach((input) => {
-      input.value = "";
-    });
-
-    const activeButtons = this.container.querySelectorAll(".button_alt-active");
-    activeButtons.forEach((button) => {
-      button.classList.remove("button_alt-active");
-    });
-  }
 }
