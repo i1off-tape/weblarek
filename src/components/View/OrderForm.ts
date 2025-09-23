@@ -48,8 +48,11 @@ export class OrderForm extends Form<IOrderFormData> {
       hasPayment: !!paymentButton,
     });
 
-    if (!addressInput?.value.trim()) {
+    const addressValue = addressInput?.value.trim() || "";
+    if (!addressValue) {
       errors.push("Введите адрес доставки");
+    } else if (addressValue.length <= 5) {
+      errors.push("Адрес слишком короткий (минимум 6 символов)");
     }
 
     if (!paymentButton) {
