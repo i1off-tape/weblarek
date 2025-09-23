@@ -33,6 +33,11 @@ export class Basket extends Component<IBasketView> {
       this.container
     );
 
+    // ДОБАВЛЕНО: Устанавливаем стили для скролла
+    this._list.style.maxHeight = "350px"; // Ограничиваем высоту
+    this._list.style.overflowY = "auto"; // Включаем вертикальный скролл
+    this._list.style.paddingRight = "10px"; // Добавляем отступ для красоты
+
     this._button.addEventListener("click", () => {
       events.emit("basket:checkout");
     });
