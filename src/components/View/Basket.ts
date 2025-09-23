@@ -5,7 +5,7 @@ import { IProduct } from "../../types";
 import { CardBasket } from "./CardBasket";
 
 interface IBasketView {
-  items: IProduct[];
+  items: HTMLElement[];
   total: number;
 }
 
@@ -38,20 +38,9 @@ export class Basket extends Component<IBasketView> {
     this._button.addEventListener("click", () => {
       events.emit("basket:checkout");
     });
-
-    this._list.addEventListener("click", (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const button = target.closest(".basket__item-delete");
-      if (button) {
-        const item = button.closest(".basket__item") as HTMLElement;
-        if (item && item.dataset.id) {
-          events.emit("basket:remove", { id: item.dataset.id });
-        }
-      }
-    });
   }
 
-  set items(items: IProduct[]) {
+  set items(items: HTMLElement[]) {
     this._list.innerHTML = "";
 
     if (items.length === 0) {
@@ -61,18 +50,8 @@ export class Basket extends Component<IBasketView> {
     }
 
     this._button.disabled = false;
-
-    items.forEach((item, index) => {
-      const cardContainer = document.createElement("div");
-      const cardBasket = new CardBasket(cardContainer);
-      const card = cardBasket.render(item);
-
-      const indexElement = card.querySelector(".basket__item-index");
-      if (indexElement) {
-        indexElement.textContent = (index + 1).toString();
-      }
-
-      this._list.appendChild(card);
+    items.forEach((item) => {
+      this._list.appendChild(item);
     });
   }
 
@@ -80,16 +59,7 @@ export class Basket extends Component<IBasketView> {
     this._total.textContent = `${total} синапсов`;
   }
 
-  render(data?: Partial<IBasketView>): HTMLElement {
-    // Если переданы данные, обновляем их
-    if (data?.items) {
-      this.items = data.items;
-    }
-    if (data?.total !== undefined) {
-      this.total = data.total;
-    }
-
-    // Возвращаем обновленный контейнер
-    return super.render(data);
+  render(): HTMLElement {
+    return this.container;
   }
 }

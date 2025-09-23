@@ -4,8 +4,7 @@ import { CartManager } from "./components/Models/CartManager";
 import { BuyerManager } from "./components/Models/BuyerManager";
 import { Api } from "./components/base/Api.ts";
 import { ApiClient } from "./components/Models/ApiClient.ts";
-import { API_URL, CDN_URL } from "./utils/constants";
-import { apiProducts } from "./utils/data.ts";
+import { API_URL } from "./utils/constants";
 import { Header } from "./components/View/Header.ts";
 import { Gallery } from "./components/View/Gallery.ts";
 import { CardCatalog } from "./components/View/CardCatalog.ts";
@@ -16,10 +15,9 @@ import { Modal } from "./components/View/Modal.ts";
 import { OrderForm } from "./components/View/OrderForm.ts";
 import { ContactsForm } from "./components/View/ContactsForm.ts";
 import { Success } from "./components/View/Success.ts";
-import { CardBasket } from "./components/View/CardBasket.ts";
 import { CardPreview } from "./components/View/CardPreview.ts";
-import { Form } from "./components/View/Form.ts";
-import { IProduct, IBuyer, IOrderResponse, TPayment } from "./types/index.ts";
+import { IProduct, IOrderResponse, TPayment } from "./types/index.ts";
+import { CardBasket } from "./components/View/CardBasket.ts";
 
 // ОБЯЗАТЕЛЬНО: обернуть в DOMContentLoaded
 document.addEventListener("DOMContentLoaded", () => {
@@ -48,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
   apiClient
     .getProducts()
     .then((data) => {
-      console.log("✅ Products loaded from API:", data.items.length); // ДОБАВИТЬ
       catalogManager.saveProductList(data.items);
     })
     .catch((error) => {
@@ -59,16 +56,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Каталог товаров - ПОЛНЫЙ обработчик
   events.on("catalog:changed", (items: IProduct[]) => {
-    console.log("📋 Catalog changed, rendering", items.length, "items");
-
     const cardCatalog = new CardCatalog(document.createElement("div"));
     const cards = items.map((item) => {
       const card = cardCatalog.render(item);
-      console.log("🃏 Created card for:", item.title);
 
-      // КРИТИЧНО: добавляем обработчик клика на КАРТОЧКУ
+      // добавляем обработчик клика на КАРТОЧКУ
       card.addEventListener("click", () => {
-        console.log("🖱️ Card clicked for ID:", item.id);
         events.emit("card:select", { id: item.id });
       });
 
@@ -76,12 +69,10 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     gallery.catalog = cards;
-    console.log("🎨 Gallery catalog updated, children:", gallery.itemsCount);
   });
 
   // Просмотр товара
   events.on("catalog:productSelected", (product: IProduct) => {
-    console.log("🎬 Opening modal for product:", product.title);
     const cardPreview = new CardPreview(document.createElement("div"));
     const preview = cardPreview.render(product);
 
@@ -111,21 +102,22 @@ document.addEventListener("DOMContentLoaded", () => {
   // Корзина
   events.on("cart:changed", (items: IProduct[]) => {
     header.counter = items.length;
-    basket.items = items;
+    const basketItems = items.map((item, index) => {
+      const cardContainer = document.createElement("div");
+      const cardBasket = new CardBasket(cardContainer, events);
+      return cardBasket.render(item, index);
+    });
+    basket.items = basketItems;
     basket.total = cartManager.getTotalPrice();
   });
 
   events.on("basket:open", () => {
-    basket.items = cartManager.getProductsList();
-    basket.total = cartManager.getTotalPrice();
-
     modal.setContent(basketElement);
     modal.open();
   });
 
   events.on("basket:remove", (data: { id: string }) => {
     cartManager.removeProduct(data.id);
-    catalogManager.saveProductList(catalogManager.getProductList());
   });
 
   // Обновляем обработчики
@@ -140,8 +132,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Формы
   events.on("order:submit", (data: { payment: TPayment; address: string }) => {
-    console.log("🔍 Saving order data:", data);
-
     try {
       // Сохраняем только адрес и способ оплаты
       buyerManager.saveBuyerData({
@@ -149,9 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
         address: data.address,
         // email и phone остаются пустыми - это нормально на этом этапе
       });
-      console.log("✅ Order data saved successfully");
     } catch (error) {
-      console.error("❌ Error saving order data:", error);
       // Показываем ошибку пользователю
       const orderFormElement = orderForm.render({
         valid: false,
@@ -181,25 +169,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const products = cartManager.getProductsList();
       const total = cartManager.getTotalPrice();
 
-      console.log("🚀 Sending order with:", {
-        products: products.map((p) => ({
-          id: p.id,
-          title: p.title,
-          price: p.price,
-        })),
-        buyer: buyerData,
-        total: total,
-      });
-
       apiClient
         .sendOrder(products, buyerData)
         .then((response: IOrderResponse) => {
-          console.log("✅ Order response:", response);
-
           // ПРАВИЛЬНАЯ ПРОВЕРКА: если есть id - заказ успешно создан
           if (response.id) {
-            console.log("🎉 Order created successfully! ID:", response.id);
-
             // Показываем окно успеха с общей суммой из ответа API
             const successElement = success.render({
               total: response.total || total,
@@ -232,12 +206,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Карточки товаров
   events.on("card:select", (data: { id: string }) => {
-    console.log("🔥 card:select triggered with ID:", data.id); // ДОБАВИТЬ
     const product = catalogManager.getProductById(data.id);
-    console.log("📦 Found product:", product); // ДОБАВИТЬ
+
     if (product) {
       events.emit("catalog:productSelected", product);
-      console.log("🎯 Emitted catalog:productSelected"); // ДОБАВИТЬ
     } else {
       console.error(`Product with ID ${data.id} not found`);
     }
@@ -250,8 +222,4 @@ document.addEventListener("DOMContentLoaded", () => {
       catalogManager.saveProductList(catalogManager.getProductList());
     }
   });
-
-  // После создания events
-  events.on("test", () => console.log("TEST EVENT WORKS!"));
-  events.emit("test"); // Должен вывести сообщение
 }); // Конец DOMContentLoaded
