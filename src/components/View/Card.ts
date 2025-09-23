@@ -17,7 +17,16 @@ export abstract class Card extends Component<IProduct> {
     if (!template) {
       throw new Error(`Template ${this.templateId} not found`);
     }
-    return template.content.cloneNode(true) as HTMLElement;
+
+    // ПРАВИЛЬНОЕ создание элемента из шаблона
+    const content = template.content.cloneNode(true) as DocumentFragment;
+    const container = content.firstElementChild as HTMLElement;
+
+    if (!container) {
+      throw new Error(`Template ${this.templateId} is empty`);
+    }
+
+    return container;
   }
 
   protected setText(selector: string, text: string, parent: HTMLElement): void {

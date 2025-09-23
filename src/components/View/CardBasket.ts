@@ -7,13 +7,7 @@ export class CardBasket extends Card {
   }
 
   render(data: IProduct): HTMLElement {
-    const fragment = this.createTemplate();
-
-    // Получаем элемент из фрагмента
-    const card = fragment.firstElementChild as HTMLElement;
-    if (!card) {
-      throw new Error("Card element not found in template");
-    }
+    const card = this.createTemplate();
 
     // Теперь работаем с элементом, а не с фрагментом
     card.dataset.id = data.id;

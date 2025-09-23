@@ -7,13 +7,7 @@ export class CardCatalog extends Card {
   }
 
   render(data: IProduct): HTMLElement {
-    const fragment = this.createTemplate(); // Это DocumentFragment
-
-    // ИСПРАВЛЕНИЕ: Извлекаем первый корневой элемент
-    const card = fragment.firstElementChild as HTMLElement;
-    if (!card) {
-      throw new Error("Card template has no root element");
-    }
+    const card = this.createTemplate();
 
     card.setAttribute("data-id", data.id);
 

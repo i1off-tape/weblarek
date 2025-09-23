@@ -30,13 +30,27 @@ export class Modal extends Component<{}> {
 
   open(): void {
     this.container.classList.add("modal_active");
+    this.disableBodyScroll();
   }
 
   close(): void {
     this.container.classList.remove("modal_active");
+    this.enableBodyScroll();
   }
 
   setContent(content: HTMLElement): void {
     this._content.replaceChildren(content);
+  }
+
+  private disableBodyScroll(): void {
+    const scrollBarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = `${scrollBarWidth}px`; // предотвращает смещение контента
+  }
+
+  private enableBodyScroll(): void {
+    document.body.style.overflow = "";
+    document.body.style.paddingRight = "";
   }
 }

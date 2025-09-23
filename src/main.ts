@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Добавляем кнопку "В корзину"
     const button = preview.querySelector(".card__button");
-    if (button) {
+    if (button && product.price !== null) {
       const isInCart = cartManager.hasProduct(product.id);
       if (isInCart) {
         button.textContent = "Удалить из корзины";
