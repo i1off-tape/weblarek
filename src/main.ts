@@ -181,6 +181,10 @@ document.addEventListener("DOMContentLoaded", () => {
     modal.close();
   });
 
+  events.on("modal:close", () => {
+    modal.close();
+  });
+
   // Карточки товаров
   events.on("card:select", (data: { id: string }) => {
     const product = catalogManager.getProductById(data.id);
