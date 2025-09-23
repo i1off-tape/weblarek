@@ -11,54 +11,72 @@ export class BuyerManager {
 
   constructor(protected events: EventEmitter) {}
 
-  // Валидация полей заказа (адрес и оплата)
-  validateOrderData(payment?: TPayment, address?: string): boolean {
+  // Детальная валидация заказа с конкретными ошибками
+  validateOrderDataWithErrors(payment?: TPayment, address?: string): string[] {
     const actualPayment = payment || this.buyer.payment;
     const actualAddress = address !== undefined ? address : this.buyer.address;
+    const errors: string[] = [];
 
-    if (actualPayment !== "card" && actualPayment !== "cash") {
-      return false;
+    if (!actualPayment) {
+      errors.push("Выберите способ оплаты");
+    } else if (actualPayment !== "card" && actualPayment !== "cash") {
+      errors.push("Некорректный способ оплаты");
     }
-    if (actualAddress.trim().length <= 5) {
-      return false;
+
+    if (!actualAddress.trim()) {
+      errors.push("Введите адрес доставки");
+    } else if (actualAddress.trim().length <= 5) {
+      errors.push("Адрес должен содержать более 5 символов");
     }
-    return true;
+
+    return errors;
   }
 
-  // Валидация контактных данных
-  validateContactsData(email?: string, phone?: string): boolean {
+  // Детальная валидация контактов с конкретными ошибками
+  validateContactsDataWithErrors(email?: string, phone?: string): string[] {
     const actualEmail = email !== undefined ? email : this.buyer.email;
     const actualPhone = phone !== undefined ? phone : this.buyer.phone;
+    const errors: string[] = [];
 
-    if (actualEmail !== "") {
+    if (!actualEmail.trim()) {
+      errors.push("Введите email");
+    } else {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(actualEmail)) return false;
+      if (!emailRegex.test(actualEmail)) {
+        errors.push("Некорректный формат email");
+      }
     }
 
-    if (actualPhone !== "") {
+    if (!actualPhone.trim()) {
+      errors.push("Введите номер телефона");
+    } else {
       const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
-      if (!phoneRegex.test(actualPhone)) return false;
+      if (!phoneRegex.test(actualPhone)) {
+        errors.push("Некорректный формат телефона");
+      }
     }
-    return true;
+
+    return errors;
   }
 
-  // Полная валидация всех данных
-  validateData(): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
+  // Существующие методы оставляем для обратной совместимости
+  validateOrderData(payment?: TPayment, address?: string): boolean {
+    return this.validateOrderDataWithErrors(payment, address).length === 0;
+  }
 
-    return (
-      emailRegex.test(this.buyer.email) &&
-      phoneRegex.test(this.buyer.phone) &&
-      this.buyer.address.trim().length > 5 &&
-      (this.buyer.payment === "card" || this.buyer.payment === "cash")
-    );
+  validateContactsData(email?: string, phone?: string): boolean {
+    return this.validateContactsDataWithErrors(email, phone).length === 0;
+  }
+
+  validateData(): boolean {
+    return this.validateOrderData() && this.validateContactsData();
   }
 
   // Обновление данных заказа (вызывается при изменении полей)
   updateOrderData(payment: TPayment, address: string): void {
-    if (!this.validateOrderData(payment, address)) {
-      throw new Error("Данные заказа некорректны");
+    const errors = this.validateOrderDataWithErrors(payment, address);
+    if (errors.length > 0) {
+      throw new Error(errors.join(", "));
     }
 
     this.buyer.payment = payment;
@@ -68,8 +86,9 @@ export class BuyerManager {
 
   // Обновление контактных данных (вызывается при изменении полей)
   updateContactsData(email: string, phone: string): void {
-    if (!this.validateContactsData(email, phone)) {
-      throw new Error("Контактные данные некорректны");
+    const errors = this.validateContactsDataWithErrors(email, phone);
+    if (errors.length > 0) {
+      throw new Error(errors.join(", "));
     }
 
     this.buyer.email = email;

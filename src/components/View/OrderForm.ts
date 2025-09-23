@@ -37,17 +37,7 @@ export class OrderForm extends Form<IOrderFormData> {
         const payment = (button.getAttribute("name") || "card") as TPayment;
         const address = this._addressInput.value.trim();
 
-        // Отправляем данные в модель сразу при изменении
-        try {
-          this.events.emit("order:changed", { payment, address });
-          this.setErrors([]);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : "Ошибка валидации";
-          this.setErrors([errorMessage]);
-        }
-
-        this.updateButtonState();
+        this.events.emit("order:changed", { payment, address });
       });
     });
 
@@ -58,17 +48,7 @@ export class OrderForm extends Form<IOrderFormData> {
         "card") as TPayment;
       const address = this._addressInput.value.trim();
 
-      // Отправляем данные в модель сразу при изменении
-      try {
-        this.events.emit("order:changed", { payment, address });
-        this.setErrors([]);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Ошибка валидации";
-        this.setErrors([errorMessage]);
-      }
-
-      this.updateButtonState();
+      this.events.emit("order:changed", { payment, address });
     });
 
     // Обработчик отправки формы - теперь только навигация
@@ -97,16 +77,6 @@ export class OrderForm extends Form<IOrderFormData> {
 
     this._submitButton.disabled = true;
     this.setErrors([]);
-  }
-
-  public updateButtonState(): void {
-    const paymentButton = this.container.querySelector(".button_alt-active");
-    const payment = paymentButton?.getAttribute("name");
-    const address = this._addressInput.value.trim();
-
-    // Кнопка активна только если есть способ оплаты и адрес не пустой
-    const isValid = !!payment && address.trim().length > 0;
-    this._submitButton.disabled = !isValid;
   }
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {

@@ -33,32 +33,14 @@ export class ContactsForm extends Form<IContactsFormData> {
       const email = this._emailInput.value.trim();
       const phone = this._phoneInput.value.trim();
 
-      try {
-        this.events.emit("contacts:changed", { email, phone });
-        this.setErrors([]);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Ошибка валидации";
-        this.setErrors([errorMessage]);
-      }
-
-      this.updateButtonState();
+      this.events.emit("contacts:changed", { email, phone });
     });
 
     this._phoneInput.addEventListener("input", () => {
       const email = this._emailInput.value.trim();
       const phone = this._phoneInput.value.trim();
 
-      try {
-        this.events.emit("contacts:changed", { email, phone });
-        this.setErrors([]);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : "Ошибка валидации";
-        this.setErrors([errorMessage]);
-      }
-
-      this.updateButtonState();
+      this.events.emit("contacts:changed", { email, phone });
     });
 
     // Обработчик отправки формы - теперь только отправка заказа
@@ -73,17 +55,6 @@ export class ContactsForm extends Form<IContactsFormData> {
     this._phoneInput.value = "";
     this._submitButton.disabled = true;
     this.setErrors([]);
-  }
-
-  public updateButtonState(): void {
-    const email = this._emailInput.value.trim();
-    const phone = this._phoneInput.value.trim();
-
-    // Базовая проверка заполненности полей
-    const isEmailFilled = email.length > 0;
-    const isPhoneFilled = phone.length > 0;
-
-    this._submitButton.disabled = !(isEmailFilled && isPhoneFilled);
   }
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {

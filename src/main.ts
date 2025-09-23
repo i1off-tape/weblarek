@@ -107,9 +107,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Просто показываем форму
     const orderFormElement = orderForm.render();
     modal.setContent(orderFormElement);
-
-    // Запускаем проверку состояния для текущих данных
-    orderForm.updateButtonState();
   });
 
   // Изменение данных
@@ -117,16 +114,22 @@ document.addEventListener("DOMContentLoaded", () => {
   events.on("buyer:cleared", () => {
     orderForm.clearForm();
     contactsForm.clearForm();
+    orderForm.render({ valid: false, errors: [] });
+    contactsForm.render({ valid: false, errors: [] });
   });
 
   events.on("contacts:changed", (data: { email: string; phone: string }) => {
     try {
       buyerManager.updateContactsData(data.email, data.phone);
-      contactsForm.render({ valid: buyerManager.validateData(), errors: [] });
+      // Если успешно - очищаем ошибки
+      contactsForm.render({ valid: true, errors: [] });
     } catch (error) {
+      // Показываем конкретные ошибки из модели
+      const errorMessage =
+        error instanceof Error ? error.message : "Ошибка валидации";
       contactsForm.render({
         valid: false,
-        errors: [error instanceof Error ? error.message : "Ошибка валидации"],
+        errors: errorMessage.split(", "), // Разделяем ошибки по запятой
       });
     }
   });
@@ -134,11 +137,15 @@ document.addEventListener("DOMContentLoaded", () => {
   events.on("order:changed", (data: { payment: TPayment; address: string }) => {
     try {
       buyerManager.updateOrderData(data.payment, data.address);
-      orderForm.render({ valid: buyerManager.validateData(), errors: [] });
+      // Если успешно - очищаем ошибки
+      orderForm.render({ valid: true, errors: [] });
     } catch (error) {
+      // Показываем конкретные ошибки из модели
+      const errorMessage =
+        error instanceof Error ? error.message : "Ошибка валидации";
       orderForm.render({
         valid: false,
-        errors: [error instanceof Error ? error.message : "Ошибка валидации"],
+        errors: errorMessage.split(", "), // Разделяем ошибки по запятой
       });
     }
   });
@@ -146,24 +153,28 @@ document.addEventListener("DOMContentLoaded", () => {
   // Формы
   events.on("order:submit", () => {
     const buyerData = buyerManager.getBuyerData();
+    const errors = buyerManager.validateOrderDataWithErrors(
+      buyerData.payment,
+      buyerData.address
+    );
 
-    // Теперь buyerData используется и передается в validateOrderData
-    if (buyerManager.validateOrderData(buyerData.payment, buyerData.address)) {
+    if (errors.length === 0) {
       // Переходим к форме контактов
       const contactsFormElement = contactsForm.render();
       modal.setContent(contactsFormElement);
-      contactsForm.updateButtonState();
     } else {
-      // Показываем ошибку, если данные невалидны
+      // Показываем конкретные ошибки из модели
       orderForm.render({
         valid: false,
-        errors: ["Проверьте правильность адреса и способа оплаты"],
+        errors: errors, // Используем массив ошибок из модели
       });
     }
   });
 
   events.on("contacts:submit", () => {
-    if (buyerManager.validateData()) {
+    const errors = buyerManager.validateContactsDataWithErrors();
+
+    if (errors.length === 0 && buyerManager.validateData()) {
       const products = cartManager.getProductsList();
       const total = cartManager.getTotalPrice();
       const buyerData = buyerManager.getBuyerData();
@@ -188,8 +199,13 @@ document.addEventListener("DOMContentLoaded", () => {
           alert("Ошибка при оформлении заказа: " + error.message);
         });
     } else {
+      // Показываем конкретные ошибки контактов
+      const contactErrors = buyerManager.validateContactsDataWithErrors();
+      contactsForm.render({
+        valid: false,
+        errors: contactErrors,
+      });
       console.error("❌ Buyer data validation failed");
-      alert("Проверьте правильность введенных данных");
     }
   });
 
