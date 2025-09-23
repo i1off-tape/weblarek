@@ -73,28 +73,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Просмотр товара
   events.on("catalog:productSelected", (product: IProduct) => {
-    const cardPreview = new CardPreview(document.createElement("div"));
+    const cardPreview = new CardPreview(document.createElement("div"), events);
+    cardPreview.setButtonState(cartManager.hasProduct(product.id));
     const preview = cardPreview.render(product);
-
-    // Добавляем кнопку "В корзину"
-    const button = preview.querySelector(".card__button");
-    if (button && product.price !== null) {
-      const isInCart = cartManager.hasProduct(product.id);
-      if (isInCart) {
-        button.textContent = "Удалить из корзины";
-        button.addEventListener("click", () => {
-          events.emit("basket:remove", { id: product.id }); // Используем существующий событие удаления
-          modal.close();
-        });
-      } else {
-        button.textContent = "В корзину";
-        button.addEventListener("click", () => {
-          events.emit("card:addToBasket", { id: product.id });
-          modal.close();
-        });
-      }
-    }
-
     modal.setContent(preview);
     modal.open();
   });
@@ -215,6 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const product = catalogManager.getProductById(data.id);
     if (product) {
       cartManager.addProduct(product);
+      modal.close();
     }
   });
 }); // Конец DOMContentLoaded
