@@ -24,9 +24,9 @@ export interface IProductResponse {
 }
 
 export interface IOrderResponse {
-  success: boolean;
-  code: boolean;
-  orderId?: string;
+  id?: string; // ID заказа если успешно
+  total?: number; // Общая сумма
+  error?: string; // Сообщение об ошибке если есть
 }
 
 export interface IApi {
