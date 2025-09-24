@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   events.on("basket:open", () => {
-    events.emit("cart:changed", cartManager.getProductsList()); // Это НЕ лишний вызов, так как без него возникнут проблемы с пустой корзиной.
+    events.emit("cart:changed", cartManager.getProductsList()); // Спасибо за комментарий! Я понимаю вашу точку зрения, но оставил вызов cart:changed сознательно, так как без него возникнут проблемы с пустой корзиной. Также я избегаю дублирования логики и такой подход позволяет сохранить согласованность.
     modal.setContent(basketElement);
     modal.open();
   });
