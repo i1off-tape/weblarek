@@ -26,7 +26,7 @@ export class OrderForm extends Form<IOrderFormData> {
       this.container
     );
 
-    // Обработчик для кнопок оплаты - сразу отправляем в модель
+    // Обработчик для кнопок оплаты
     this._paymentButtons.forEach((button) => {
       button.addEventListener("click", () => {
         this._paymentButtons.forEach((btn) =>
@@ -35,23 +35,17 @@ export class OrderForm extends Form<IOrderFormData> {
         button.classList.add("button_alt-active");
 
         const payment = (button.getAttribute("name") || "card") as TPayment;
-        const address = this._addressInput.value.trim();
-
-        this.events.emit("order:changed", { payment, address });
+        this.events.emit("order:change", { payment });
       });
     });
 
-    // Обработчик для поля адреса - сразу отправляем в модель
+    // Обработчик для поля адреса
     this._addressInput.addEventListener("input", () => {
-      const paymentButton = this.container.querySelector(".button_alt-active");
-      const payment = (paymentButton?.getAttribute("name") ||
-        "card") as TPayment;
       const address = this._addressInput.value.trim();
-
-      this.events.emit("order:changed", { payment, address });
+      this.events.emit("order:change", { address });
     });
 
-    // Обработчик отправки формы - теперь только навигация
+    // Обработчик отправки формы
     this._submitButton.addEventListener("click", (event: Event) => {
       event.preventDefault();
       this.events.emit("order:submit");
@@ -61,22 +55,21 @@ export class OrderForm extends Form<IOrderFormData> {
     const defaultPaymentButton = this.container.querySelector('[name="card"]');
     if (defaultPaymentButton) {
       defaultPaymentButton.classList.add("button_alt-active");
+      this.events.emit("order:change", { payment: "card" });
     }
   }
 
-  clearForm(): void {
+  // Сбрасываем визуальное состояние формы
+  resetForm(): void {
     this._addressInput.value = "";
     this._paymentButtons.forEach((btn) =>
       btn.classList.remove("button_alt-active")
     );
-
     const defaultPaymentButton = this.container.querySelector('[name="card"]');
     if (defaultPaymentButton) {
       defaultPaymentButton.classList.add("button_alt-active");
     }
-
-    this._submitButton.disabled = true;
-    this.setErrors([]);
+    this.events.emit("order:change", { payment: "card", address: "" });
   }
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {

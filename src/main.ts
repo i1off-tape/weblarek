@@ -107,72 +107,48 @@ document.addEventListener("DOMContentLoaded", () => {
     modal.setContent(orderFormElement);
   });
 
+  // Обработка ошибок и валидации
+  events.on("errors:show", (errors: Record<string, string>) => {
+    const orderErrors = [errors.payment, errors.address].filter((msg) => msg);
+    const contactsErrors = [errors.email, errors.phone].filter((msg) => msg);
+
+    orderForm.render({
+      valid: buyerManager.isOrderValid(),
+      errors: orderErrors,
+    });
+
+    contactsForm.render({
+      valid: buyerManager.isContactsValid(),
+      errors: contactsErrors,
+    });
+  });
+
   // Изменение данных
-
-  events.on("buyer:cleared", () => {
-    orderForm.clearForm();
-    contactsForm.clearForm();
-    orderForm.render({ valid: false, errors: [] });
-    contactsForm.render({ valid: false, errors: [] });
-  });
-
-  events.on("contacts:changed", (data: { email: string; phone: string }) => {
-    try {
-      buyerManager.updateContactsData(data.email, data.phone);
-      // Если успешно - очищаем ошибки
-      contactsForm.render({ valid: true, errors: [] });
-    } catch (error) {
-      // Показываем конкретные ошибки из модели
-      const errorMessage =
-        error instanceof Error ? error.message : "Ошибка валидации";
-      contactsForm.render({
-        valid: false,
-        errors: errorMessage.split(", "), // Разделяем ошибки по запятой
-      });
+  events.on(
+    "order:change",
+    (data: Partial<{ payment: TPayment; address: string }>) => {
+      buyerManager.setOrderData(data);
     }
-  });
+  );
 
-  events.on("order:changed", (data: { payment: TPayment; address: string }) => {
-    try {
-      buyerManager.updateOrderData(data.payment, data.address);
-      // Если успешно - очищаем ошибки
-      orderForm.render({ valid: true, errors: [] });
-    } catch (error) {
-      // Показываем конкретные ошибки из модели
-      const errorMessage =
-        error instanceof Error ? error.message : "Ошибка валидации";
-      orderForm.render({
-        valid: false,
-        errors: errorMessage.split(", "), // Разделяем ошибки по запятой
-      });
+  events.on(
+    "contacts:change",
+    (data: Partial<{ email: string; phone: string }>) => {
+      buyerManager.setContactsData(data);
     }
-  });
+  );
 
   // Формы
   events.on("order:submit", () => {
-    const buyerData = buyerManager.getBuyerData();
-    const errors = buyerManager.validateOrderDataWithErrors(
-      buyerData.payment,
-      buyerData.address
-    );
-
-    if (errors.length === 0) {
-      // Переходим к форме контактов
+    if (buyerManager.isOrderValid()) {
       const contactsFormElement = contactsForm.render();
       modal.setContent(contactsFormElement);
-    } else {
-      // Показываем конкретные ошибки из модели
-      orderForm.render({
-        valid: false,
-        errors: errors, // Используем массив ошибок из модели
-      });
+      modal.open();
     }
   });
 
   events.on("contacts:submit", () => {
-    const errors = buyerManager.validateContactsDataWithErrors();
-
-    if (errors.length === 0 && buyerManager.validateData()) {
+    if (buyerManager.isContactsValid() && buyerManager.isOrderValid()) {
       const products = cartManager.getProductsList();
       const total = cartManager.getTotalPrice();
       const buyerData = buyerManager.getBuyerData();
@@ -185,6 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
               total: response.total || total,
             });
             modal.setContent(successElement);
+            modal.open();
 
             cartManager.clearCart();
             buyerManager.clearBuyerData();
@@ -196,15 +173,12 @@ document.addEventListener("DOMContentLoaded", () => {
           console.error("❌ Order error:", error.message);
           alert("Ошибка при оформлении заказа: " + error.message);
         });
-    } else {
-      // Показываем конкретные ошибки контактов
-      const contactErrors = buyerManager.validateContactsDataWithErrors();
-      contactsForm.render({
-        valid: false,
-        errors: contactErrors,
-      });
-      console.error("❌ Buyer data validation failed");
     }
+  });
+
+  events.on("buyer:cleared", () => {
+    orderForm.resetForm();
+    contactsForm.resetForm();
   });
 
   // Модальные окна

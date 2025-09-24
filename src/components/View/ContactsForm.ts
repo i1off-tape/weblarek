@@ -28,33 +28,29 @@ export class ContactsForm extends Form<IContactsFormData> {
       this.container
     );
 
-    // Обработчики для полей - сразу отправляем в модель
+    // Обработчики для полей
     this._emailInput.addEventListener("input", () => {
       const email = this._emailInput.value.trim();
-      const phone = this._phoneInput.value.trim();
-
-      this.events.emit("contacts:changed", { email, phone });
+      this.events.emit("contacts:change", { email });
     });
 
     this._phoneInput.addEventListener("input", () => {
-      const email = this._emailInput.value.trim();
       const phone = this._phoneInput.value.trim();
-
-      this.events.emit("contacts:changed", { email, phone });
+      this.events.emit("contacts:change", { phone });
     });
 
-    // Обработчик отправки формы - теперь только отправка заказа
+    // Обработчик отправки формы
     this._submitButton.addEventListener("click", (event) => {
       event.preventDefault();
-      events.emit("contacts:submit");
+      this.events.emit("contacts:submit");
     });
   }
 
-  clearForm(): void {
+  // Сбрасываем визуальное состояние формы
+  resetForm(): void {
     this._emailInput.value = "";
     this._phoneInput.value = "";
-    this._submitButton.disabled = true;
-    this.setErrors([]);
+    this.events.emit("contacts:change", { email: "", phone: "" });
   }
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement {
