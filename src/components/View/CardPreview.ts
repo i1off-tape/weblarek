@@ -48,6 +48,7 @@ export class CardPreview extends Card {
         this.events.emit("modal:close");
       } else {
         this.events.emit("card:addToBasket", { id: productId });
+        this.events.emit("modal:close");
       }
     });
   }

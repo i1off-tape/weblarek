@@ -233,7 +233,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const product = catalogManager.getProductById(data.id);
     if (product) {
       cartManager.addProduct(product);
-      modal.close();
     }
   });
 }); // Конец DOMContentLoaded
