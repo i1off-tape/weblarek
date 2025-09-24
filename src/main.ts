@@ -105,6 +105,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Просто показываем форму
     const orderFormElement = orderForm.render();
     modal.setContent(orderFormElement);
+    modal.open(); // Для устойчивости
   });
 
   // Обработка ошибок и валидации
