@@ -47,6 +47,7 @@ export class ContactsForm extends Form<IContactsFormData> {
   }
 
   // Сбрасываем визуальное состояние формы
+  // только отражает состояние модели и отправляет пользовательский ввод через события. Сброс формы в UI инициируется событием buyer:cleared из модели, а данные синхронизируются через order:change.
   resetForm(): void {
     this._emailInput.value = "";
     this._phoneInput.value = "";

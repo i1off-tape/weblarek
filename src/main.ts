@@ -91,7 +91,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   events.on("basket:open", () => {
-    events.emit("cart:changed", cartManager.getProductsList());
+    events.emit("cart:changed", cartManager.getProductsList()); // Это НЕ лишний вызов, так как без него возникнут проблемы с пустой корзиной.
     modal.setContent(basketElement);
     modal.open();
   });
