@@ -216,29 +216,31 @@ BuyerManager - класс управляет данными покупателя
 type TPayment = "card" | "cash"; // типы оплат
 
 class BuyerManager {
-  //Защищенное поле
+  // Защищённое поле
   protected buyer: IBuyer = {
-    payment: "card", // значение по-умолчанию!
-    email: "",
-    phone: "",
-    address: "",
+    payment: "card", // Способ оплаты по умолчанию
+    email: "", // Пустой email
+    phone: "", // Пустой телефон
+    address: "", // Пустой адрес
   };
 
+  // Конструктор
+  constructor(protected events: EventEmitter); // Инициализирует с EventEmitter и запускает валидацию
+
   // ОСНОВНЫЕ МЕТОДЫ ВАЛИДАЦИИ
-  validateOrderDataWithErrors(payment?: TPayment, address?: string): string[]; // Детальная валидация с конкретными ошибками
-  validateContactsDataWithErrors(email?: string, phone?: string): string[]; // Детальная валидация контактов
+  validate(): void; // Проверяет все данные (payment, address, email, phone) и отправляет ошибки через событие errors:show
 
   // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ (boolean)
-  validateOrderData(payment?: TPayment, address?: string): boolean;
-  validateContactsData(email?: string, phone?: string): boolean;
-  validateData(): boolean;
+  isOrderValid(): boolean; // Проверяет валидность заказа (payment — card/cash, address > 5 символов)
+  isContactsValid(): boolean; // Проверяет валидность контактов (email и phone соответствуют regex)
 
   // ОБНОВЛЕНИЕ ДАННЫХ (вызывается при изменении полей)
-  updateOrderData(payment: TPayment, address: string): void; // Сохраняет данные заказа
-  updateContactsData(email: string, phone: string): void; // Сохраняет контактные данные
+  setOrderData(data: Partial<{ payment: TPayment; address: string }>): void; // Обновляет данные заказа (payment, address) и запускает валидацию
+  setContactsData(data: Partial<{ email: string; phone: string }>): void; // Обновляет контактные данные (email, phone) и запускает валидацию
 
-  getBuyerData(): IBuyer;
-  clearBuyerData(): void;
+  // ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ
+  getBuyerData(): IBuyer; // Возвращает копию текущих данных покупателя
+  clearBuyerData(): void; // Сбрасывает данные покупателя (payment на "card", остальные — пустые) и вызывает событие buyer:cleared
 }
 ```
 
@@ -456,7 +458,7 @@ class OrderForm {
 
   constructor(events: EventEmitter) {}
 
-  clearForm(): void; // - очищает форму
+  resetForm(): void; // - только отражает состояние модели
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement; // - рендерит форму с сбросом данных.
 }
@@ -481,7 +483,7 @@ class ContactsForm {
 
   constructor(events: EventEmitter) {}
 
-  clearForm(): void; // - очищает форму
+  resetForm(): void; // - только отражает состояние модели
 
   render(data?: Partial<{ valid: boolean; errors: string[] }>): HTMLElement; // - рендерит форму с сбросом данных.
 }
@@ -560,11 +562,13 @@ interface ISuccess {
 - `order:submit`: только навигация между формами (данные уже в модели)
 - `contacts:submit`: отправка заказа (данные уже в модели)
 - `success:close`: Генерируется при закрытии окна успеха в `Success`. Не передаёт данные.
-- `order:changed`: данные заказа изменены (payment, address)
-- `contacts:changed`: контактные данные изменены (email, phone)
 - `modal:close`: Генерируется при закрытии модального окна. Не передаёт данные.
 - `card:select`: Генерируется при клике на карточку товара в каталоге. Передаёт ID товара (`{ id: string }`).
 - `card:addToBasket`: Генерируется при добавлении товара в корзину из превью. Передаёт ID товара ({ id: string }).
+- `buyer:cleared`: Сбрасывает данные покупателя в модели (BuyerManager) и формы (OrderForm, ContactsForm). Без данных.
+- `contacts:change`: Обновляет контактные данные (email, phone) в модели при их изменении в форме.
+- `order:change`: Обновляет данные заказа (payment, address) в модели при их изменении в форме.
+- `errors:show`: Передаёт ошибки валидации из модели в формы для отображения.
 
 ## Презентер
 

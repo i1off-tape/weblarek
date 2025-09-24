@@ -29,8 +29,10 @@ export class Modal extends Component<{}> {
   }
 
   open(): void {
-    this.container.classList.add("modal_active");
-    this.disableBodyScroll();
+    if (!this.container.classList.contains("modal_active")) {
+      this.container.classList.add("modal_active");
+      this.disableBodyScroll();
+    }
   }
 
   close(): void {
@@ -39,7 +41,15 @@ export class Modal extends Component<{}> {
   }
 
   setContent(content: HTMLElement): void {
+    // Сбрасываем состояние скролла перед установкой нового содержимого
+    if (this.container.classList.contains("modal_active")) {
+      this.enableBodyScroll();
+    }
     this._content.replaceChildren(content);
+    // Если модальное окно должно остаться открытым, снова включаем блокировку скролла
+    if (this.container.classList.contains("modal_active")) {
+      this.disableBodyScroll();
+    }
   }
 
   private disableBodyScroll(): void {
