@@ -57,13 +57,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Каталог товаров - ПОЛНЫЙ обработчик
   events.on("catalog:changed", (items: IProduct[]) => {
     const cards = items.map((item) => {
-      const cardCatalog = new CardCatalog(document.createElement("div"));
+      const cardCatalog = new CardCatalog(
+        document.createElement("div"),
+        events
+      );
       const card = cardCatalog.render(item);
-
-      // добавляем обработчик клика на КАРТОЧКУ
-      card.addEventListener("click", () => {
-        events.emit("card:select", { id: item.id });
-      });
 
       return card;
     });
